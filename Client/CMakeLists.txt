@@ -32,4 +32,4 @@ FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/shaders")
 
 find_package(Vulkan REQUIRED)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends ${STB_DIR} ${LOGGER_DIR} src)
-target_link_libraries(Client glfw glm Vulkan::Vulkan)
+target_link_libraries(Client glfw glm GameNetworkingSockets Vulkan::Vulkan)
