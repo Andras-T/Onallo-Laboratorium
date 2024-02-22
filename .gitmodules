@@ -10,4 +10,4 @@
 	branch = docking
 [submodule "lib/GameNetworkingSockets"]
 	path = lib/GameNetworkingSockets
-	url = https://github.com/ValveSoftware/GameNetworkingSockets
+	url = https://github.com/Andras-T/GameNetworkingSockets.git
