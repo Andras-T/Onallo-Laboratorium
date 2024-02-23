@@ -12,7 +12,7 @@ set(SOURCES
         src/main.cpp
         src/Vulkan/Core.cpp
         src/Vulkan/Window/Window.cpp
-        src/Vulkan/VulkanObject.cpp
+        src/Vulkan/DeviceManager.cpp
 
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp 
         ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
