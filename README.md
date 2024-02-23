@@ -2,19 +2,19 @@
 
 This project is a C++ application that uses Vulkan, a low-level graphics API, to create a networked app that can stream images between a client and a server. The client app will send user input to the server, which will process it and render the current image using Vulkan. The server will then send the image back to the client, which will display it on the screen. The app will use UDP protocol to achieve fast network communication. The app will also use Valve GameNetworkingSockets library, which provides a high-level interface for network sockets, and ImGui library, which provides a simple and easy-to-use graphical user interface.
 
-##INSTALL Visual Studio 2022
+INSTALL Visual Studio 2022
 ----------------------
 
 Download the required components for c++ desktop development
 
-##INSTALL Vulkan
+INSTALL Vulkan
 ---------------------
 
 - Step 1: First, you need to check if your graphics card supports Vulkan. You can do this by launching the DirectX Diagnostic Tool1 and clicking on the Display tab Under Drivers, check for the Vulkan Support entry. If it says No, then your graphics card does not support Vulkan. If it says Yes, then your card supports Vulkan but its not enabled by default
 
 - Step 2: Download it from here https://vulkan.lunarg.com/ and follow its instructions.
 
-##INSTALL OPENSSL
+INSTALL OPENSSL
 -----------------------
 
 - Step 1: Install Perl - Install the Strawberry version, much easier to install and it installs everything and also adds them automatically to the Windows PATH variables
@@ -49,14 +49,14 @@ Download the required components for c++ desktop development
 
 - Step 10: That's it! It's installed! You can find the OpenSSL executable (openssl.exe) at C:/dev/openssl/apps. (And add it to Windows system or user's PATH variables if you want)
 
-##INSTALL VCPKG
+INSTALL VCPKG
 -----------------------
 
 - Step 1: clone the vcpkg repository: git clone https://github.com/Microsoft/vcpkg.git
 
 - Step 2: Run the bootstrap script to build vcpkg: vcpkg\bootstrap-vcpkg.bat
 
-##INSTALL Protobuf:
+INSTALL Protobuf:
 -----------------------
 
 - Step 1: Protobuf and its dependencies can be installed directly by using vcpkg: vcpkg install protobuf protobuf:x64-windows
