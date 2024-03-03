@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(Client)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
@@ -13,6 +13,13 @@ set(SOURCES
         src/Vulkan/Core.cpp
         src/Vulkan/Window/Window.cpp
         src/Vulkan/DeviceManager.cpp
+        src/Vulkan/Swapchain/SwapChainManager.cpp
+        src/Vulkan/Swapchain/Images.cpp
+        src/Vulkan/Descriptor/DescriptorManager.cpp
+        src/Vulkan/Descriptor/Descriptor.cpp
+        src/Vulkan/Pipeline/PipelineManager.cpp
+        src/Vulkan/Pipeline/Pipeline.cpp
+        src/Vulkan/CommandPool/CommandPoolManager.cpp
 
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp 
         ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp

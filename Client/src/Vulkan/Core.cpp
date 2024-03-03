@@ -1,4 +1,5 @@
 #include "include/Core.h"
+#include <thread>
 
 namespace Client {
 
@@ -8,16 +9,45 @@ namespace Client {
 
 		window.init("Onallo Laboratorium");
 		createInstance(enableValidationLayers);
-		logger->LogInfo("Instance created");
 		setupDebugMessenger(enableValidationLayers);
 		createSurface(*window.get_GLFW_Window());
-		logger->LogInfo("Surface created");
+		deviceManager.init(instance, surface, enableValidationLayers);
+		swapChainManager.init(surface, &deviceManager, window.get_GLFW_Window());
+		createRenderPass(swapChainManager.getSwapChainImageFormat());
+		descriptorManager.init();
+		pipelineManager.init(deviceManager.getLogicalDevice(), std::nullopt/*descriptorManager[0].getDescriptorSetLayout()*/,
+			renderPass);
+		commandPoolManager.createCommandPool(deviceManager.getLogicalDevice(), deviceManager.getIndices());
+		swapChainManager.createImages(deviceManager.getLogicalDevice(), deviceManager.getPhysicalDevice());
+		swapChainManager.createFrameBuffers(renderPass);
+
+		std::thread reciever(&Core::recieve, this);
 
 		mainLoop();
+		reciever.join();
+	}
+
+	void Core::recieve() {
+		std::unique_lock lk(m);
+		cv.wait(lk, [&] { return ready || windowShouldClose; });
+
+		// TODO: store the data in an array
+		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
+		{
+			std::cout << "--- ";
+			//...recieve data
+		}
+		std::cout << "\nwindow should close\n";
 	}
 
 	void Core::cleanUp()
 	{
+		swapChainManager.cleanUp();
+		pipelineManager.cleanUp(deviceManager.getLogicalDevice());
+		vkDestroyRenderPass(deviceManager.getLogicalDevice(), renderPass, nullptr);
+		descriptorManager.cleanUp(deviceManager.getLogicalDevice());
+		commandPoolManager.cleanUp(deviceManager.getLogicalDevice());
+		deviceManager.cleanup();
 		window.cleanup();
 
 		if (enableValidationLayers) {
@@ -28,11 +58,46 @@ namespace Client {
 	}
 
 	void Core::mainLoop() {
+		//while not connected render only the UI
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
 			glfwPollEvents();
 			//...
 			Window::lastTime = glfwGetTime();
+
+			if (connected)
+			{
+				// Signals to the reciever that it is ready to display the shared images
+				{
+					std::lock_guard lk(m);
+					ready = true;
+					cv.notify_one();
+					logger->LogInfo("Ready for processing");
+				}
+				break;
+			}
+
+		}
+
+		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
+		{
+			// wait for the reciever
+			{
+				std::unique_lock lk(m);
+				cv.wait(lk, [&] { return processed; });
+				if (glfwWindowShouldClose(window.get_GLFW_Window()))
+					break;
+			}
+			glfwPollEvents();
+			//...
+			Window::lastTime = glfwGetTime();
+		}
+
+		// Signals to the reciever that the window is being closed
+		{
+			std::lock_guard lk(m);
+			windowShouldClose = true;
+			cv.notify_one();
 		}
 		cleanUp();
 	}
@@ -81,6 +146,56 @@ namespace Client {
 		}
 	}
 
+	void Core::createRenderPass(VkFormat imageformat)
+	{
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = imageformat;
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+
+		VkAttachmentReference colorAttachmentRef{};
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+
+		VkSubpassDependency dependency{};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass = 0;
+		dependency.srcStageMask =
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+			VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask =
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+			VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.dstAccessMask =
+			VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		VkRenderPassCreateInfo simulationRenderPassInfo{};
+		simulationRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		simulationRenderPassInfo.attachmentCount = 1;
+		simulationRenderPassInfo.pAttachments = &colorAttachment;
+		simulationRenderPassInfo.subpassCount = 1;
+		simulationRenderPassInfo.pSubpasses = &subpass;
+		simulationRenderPassInfo.dependencyCount = 1;
+		simulationRenderPassInfo.pDependencies = &dependency;
+
+		if (vkCreateRenderPass(deviceManager.getLogicalDevice(), &simulationRenderPassInfo, nullptr,
+			&renderPass) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create simulation render pass!");
+		}
+	}
+
 	void Core::createInstance(bool enableValidationLayers) {
 
 		if (enableValidationLayers && !checkValidationLayerSupport()) {
@@ -119,8 +234,9 @@ namespace Client {
 		}
 
 		if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create instance!");
+			throw std::runtime_error("Failed to create instance!");
 		}
+		logger->LogInfo("Instance created successfully");
 	}
 
 	bool Core::checkValidationLayerSupport() {
@@ -166,8 +282,9 @@ namespace Client {
 	void Core::createSurface(GLFWwindow& window) {
 		if (glfwCreateWindowSurface(instance, &window, nullptr, &surface) !=
 			VK_SUCCESS) {
-			throw std::runtime_error("failed to create window surface!");
+			throw std::runtime_error("Failed to create window surface!");
 		}
+		logger->LogInfo("Surface created successfully");
 	}
 
 	void Core::setupDebugMessenger(bool enableValidationLayers) {
