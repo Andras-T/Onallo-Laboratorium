@@ -75,6 +75,16 @@ void Logger::LogError(const std::string &log, const std::string &prefix) {
             << "\x1b[31m" << logStr << endFormat << "\n";
 }
 
+void Logger::LogWarning(const std::string& log, const std::string& prefix)
+{
+    auto t = time().str();
+    auto indentation = t.size() + prefix.size() + 2;
+    auto logStr = formatMessage(log, false, indentation).str();
+    std::cout << "\x1b[36m" << t << endFormat << "\x1b[32m " << prefix
+        << endFormat << " "
+        << "\x1B[33m" << logStr << endFormat << "\n";
+}
+
 std::ostringstream Logger::formatMessage(const std::string &messageStr,
                                          bool addDoubleSpace, int indentation,
                                          int lineLimit) {

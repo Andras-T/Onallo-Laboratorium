@@ -25,6 +25,11 @@ namespace Client {
 
 		VkBuffer& getQuadBuffer() { return quadBuffer; }
 
+		void cleanUp(VkDevice& device) {
+			vkDestroyBuffer(device, quadBuffer, nullptr);
+			vkFreeMemory(device, quadMemory, nullptr);
+		}
+
 	};
 
 }

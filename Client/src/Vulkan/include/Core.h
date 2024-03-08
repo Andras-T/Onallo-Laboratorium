@@ -58,6 +58,8 @@ namespace Client {
 
 		void init();
 
+		void run();
+
 	private:
 
 		void mainLoop();

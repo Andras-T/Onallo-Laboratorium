@@ -17,8 +17,13 @@ namespace Client {
 		void init() {
 			Descriptor desc;
 			DescriptorProperties prop;
-			desc.init();
-			descriptors.push_back(std::pair(desc,"Name"));
+			prop.descriptorCount = 1;
+			prop.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			prop.poolType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			prop.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			prop.buffer = VK_NULL_HANDLE;
+			desc.init(prop);
+			descriptors.push_back(std::pair(desc,"ImGui"));
 		}
 
 		void createDescriptorPool(VkDevice& device) {
@@ -33,9 +38,10 @@ namespace Client {
 		}
 
 		void cleanUp(VkDevice& device) {
-			for (auto& [desc, name] : descriptors) {
-				desc.cleanUp(device);
-			}
+			vkDestroyDescriptorPool(device, getDescriptor("ImGui").value().getDescriptorPool(), nullptr);
+			//for (auto& [desc, name] : descriptors) {
+			//	desc.cleanUp(device);
+			//}
 		}
 
 		Descriptor& operator[](size_t i) { return descriptors[i].first; }

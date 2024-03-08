@@ -61,7 +61,7 @@ namespace Client {
 
 		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) !=
 			VK_SUCCESS) {
-			throw std::runtime_error("failed to create logical device!");
+			throw std::runtime_error("Failed to create logical device!");
 		}
 
 		vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0,
@@ -108,7 +108,7 @@ namespace Client {
 		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
 		if (deviceCount == 0) {
-			throw std::runtime_error("failed to find GPUs with Vulkan support!");
+			throw std::runtime_error("Failed to find GPUs with Vulkan support!");
 		}
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
@@ -134,7 +134,7 @@ namespace Client {
 		}
 
 		if (this->physicalDevice == VK_NULL_HANDLE) {
-			throw std::runtime_error("failed to find a suitable GPU!");
+			throw std::runtime_error("Failed to find a suitable GPU!");
 		}
 	}
 

@@ -20,14 +20,14 @@ namespace Client {
 
 		std::vector<VkFence> displayInFlightFences;
 
-		Window window;
-		DeviceManager deviceManager;
-		SwapChainManager swapChainManager;
-		DescriptorManager descriptorManager;
-		PipelineManager pipelineManager;
-		CommandPoolManager commandPoolManager;
-		ResourceManager resourceManager;		
-		VkRenderPass renderPass;
+		Window& window;
+		DeviceManager& deviceManager;
+		SwapChainManager& swapChainManager;
+		DescriptorManager& descriptorManager;
+		PipelineManager& pipelineManager;
+		CommandPoolManager& commandPoolManager;
+		ResourceManager& resourceManager;		
+		VkRenderPass& renderPass;
 
 		size_t currentFrame = 0;
 	public:
@@ -50,5 +50,7 @@ namespace Client {
 		void drawFrame(uint32_t lastFrameTime);
 
 		void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
+	
+		void cleanUp();
 	};
 }

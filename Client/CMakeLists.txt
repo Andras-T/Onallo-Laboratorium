@@ -22,6 +22,7 @@ set(SOURCES
         src/Vulkan/CommandPool/CommandPoolManager.cpp
         src/Vulkan/ResourceManager/ResourceManager.cpp
         src/Vulkan/Renderer/Renderer.cpp
+        src/Vulkan/UI/UserInterface.cpp
 
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp 
         ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp

@@ -203,8 +203,9 @@ namespace Client {
 	}
 
 	std::vector<char> Pipeline::readFile(const std::string& filename) {
-		Logger::getInstance().LogInfo("Reading file from: " + filename);
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		std::string normalizedPath = std::filesystem::canonical(filename).string();
+		Logger::getInstance().LogInfo("Reading file from: " + normalizedPath);
+		std::ifstream file(normalizedPath, std::ios::ate | std::ios::binary);
 
 		if (!file.is_open()) {
 			throw std::runtime_error("Failed to open file!");

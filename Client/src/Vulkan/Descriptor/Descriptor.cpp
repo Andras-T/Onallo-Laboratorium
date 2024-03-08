@@ -1,4 +1,5 @@
 #include "include/Descriptor.h"
+#include <Logger.h>
 
 namespace Client {
 
@@ -53,6 +54,7 @@ namespace Client {
 	// TODO
 	void Descriptor::createDescriptorSets(VkDevice& device)
 	{
+		Logger::getInstance().LogWarning("Descriptor::createDescriptorSets function is not implemented yet!");
 	}
 
 	void Descriptor::cleanUp(VkDevice& device)

@@ -3,7 +3,10 @@
 
 int main() {
 	Logger::getInstance().LogInfo("Client");
-	//Logger::getInstance().setSeverity(Trace);
+#ifdef DEBUG_MACRO
+	Logger::getInstance().setSeverity(Trace);
+#endif
 	Client::Core core;
 	core.init();
+	core.run();
 }

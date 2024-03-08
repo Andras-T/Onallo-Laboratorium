@@ -36,12 +36,15 @@ namespace Client {
 
 		renderer->createSyncObjects();
 		//TODO: fix imgui
-		//initImGui();
+		initImGui();
+	}
 
+	void Core::run() {
 		std::thread reciever(&Core::recieve, this);
 
 		mainLoop();
 		reciever.join();
+		cleanUp();
 	}
 
 	void Core::recieve() {
@@ -51,20 +54,30 @@ namespace Client {
 		// TODO: store the data in an array
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
-			std::cout << "--- ";
 			//...recieve data
 		}
-		std::cout << "\nwindow should close\n";
+		logger->LogInfo("Thread is stopping", "[enginge - reciever]");
 	}
 
 	void Core::cleanUp()
 	{
-		delete renderer;
+		check_vk_result(vkDeviceWaitIdle(deviceManager.getLogicalDevice()));
+
+		ImGui_ImplVulkan_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+
 		swapChainManager.cleanUp();
+
 		pipelineManager.cleanUp(deviceManager.getLogicalDevice());
 		vkDestroyRenderPass(deviceManager.getLogicalDevice(), renderPass, nullptr);
 		descriptorManager.cleanUp(deviceManager.getLogicalDevice());
+		resourceManager.cleanUp(deviceManager.getLogicalDevice());
 		commandPoolManager.cleanUp(deviceManager.getLogicalDevice());
+		
+		renderer->cleanUp();
+		delete renderer;
+
 		deviceManager.cleanup();
 		window.cleanup();
 
@@ -73,6 +86,8 @@ namespace Client {
 		}
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyInstance(instance, nullptr);
+
+
 	}
 
 	void Core::mainLoop() {
@@ -120,7 +135,6 @@ namespace Client {
 			windowShouldClose = true;
 			cv.notify_one();
 		}
-		cleanUp();
 	}
 
 	void Core::compileShaders() {
@@ -161,7 +175,7 @@ namespace Client {
 		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 			Logger::getInstance().LogInfo(message, prefix, "\x1b[31m");
 		else
-			Logger::getInstance().LogInfo(message, prefix, "\x1b[33m");
+			Logger::getInstance().LogInfo(message, prefix, "\x1b[34m");
 
 		return VK_FALSE;
 	}
@@ -373,7 +387,7 @@ namespace Client {
 		init_info.PhysicalDevice = deviceManager.getPhysicalDevice();
 		init_info.QueueFamily = deviceManager.getQueueFamily();
 		init_info.Queue = deviceManager.getGraphicsQueue();
-		init_info.DescriptorPool = descriptorManager.getDescriptor("").value().getDescriptorPool();
+		init_info.DescriptorPool = descriptorManager.getDescriptor("ImGui").value().getDescriptorPool();
 		init_info.MinImageCount = swapChainManager.getMinImageCount();
 		init_info.ImageCount = swapChainManager.getSwapchainImageCount();
 		init_info.Subpass = 0;

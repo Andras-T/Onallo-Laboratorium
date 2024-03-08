@@ -18,6 +18,10 @@ namespace Client {
 		for (auto& framebuffer : frameBuffers)
 			vkDestroyFramebuffer(deviceManager->getLogicalDevice(), framebuffer, nullptr);
 
+		for (auto& imageView : swapChainImageViews) {
+			vkDestroyImageView(deviceManager->getLogicalDevice(), imageView, nullptr);
+		}
+
 		vkDestroySwapchainKHR(deviceManager->getLogicalDevice(), swapChain, nullptr);
 	}
 
@@ -31,7 +35,7 @@ namespace Client {
 			chooseSwapPresentMode(swapChainSupport.presentModes);
 		VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
 
-		uint32_t imageCount = swapChainSupport.capabilities.minImageCount;
+		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 		if (swapChainSupport.capabilities.maxImageCount > 0 &&
 			imageCount > swapChainSupport.capabilities.maxImageCount) {
 			imageCount = swapChainSupport.capabilities.maxImageCount;
@@ -100,7 +104,7 @@ namespace Client {
 
 			if (vkCreateImageView(deviceManager->getLogicalDevice(), &createInfo, nullptr,
 				&swapChainImageViews[i]) != VK_SUCCESS) {
-				throw std::runtime_error("failed to create image views!");
+				throw std::runtime_error("Failed to create image views!");
 			}
 		}
 	}
@@ -130,7 +134,7 @@ namespace Client {
 	}
 
 	void SwapChainManager::createFrameBuffers() {
-		frameBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		frameBuffers.resize(swapChainImageViews.size());
 		for (int i = 0; i < frameBuffers.size(); i++) {
 			std::array<VkImageView, 1> attachments = { swapChainImageViews[i] };
 

@@ -14,7 +14,7 @@ private:
   const char *endFormat = "\x1b[0m";
 
 public:
-  //void setSeverity(Severity severity) { this->severity = severity; }
+  void setSeverity(Severity severity) { this->severity = severity; }
 
   static Logger &getInstance() {
     static Logger instance;
@@ -38,6 +38,9 @@ public:
 
   void LogError(const std::string &log,
                 const std::string &prefix = "[engine]");
+
+  void LogWarning(const std::string& log,
+      const std::string& prefix = "[engine]");
 
   Severity getSeverity() { return severity; }
 

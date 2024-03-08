@@ -1,6 +1,7 @@
 #include "include/Renderer.h"
 #include <Vulkan/Utils/Constants.h>
 #include <stdexcept>
+#include <Vulkan/UI/include/UserInterface.h>
 
 namespace Client {
 
@@ -161,11 +162,24 @@ namespace Client {
 		//	descriptorSet, 0, nullptr);
 
 		vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+		
+		UserInterface::draw(window.get_GLFW_Window(), commandPoolManager.getCommandBuffers()[currentFrame]);
 
 		vkCmdEndRenderPass(commandBuffer);
 
 		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to record command buffer!");
+		}
+	}
+
+	void Renderer::cleanUp()
+	{
+		VkDevice& device = deviceManager.getLogicalDevice();
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+			vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+
+			vkDestroyFence(device, displayInFlightFences[i], nullptr);
 		}
 	}
 }
