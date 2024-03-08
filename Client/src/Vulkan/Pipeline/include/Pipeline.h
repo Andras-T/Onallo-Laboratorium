@@ -45,7 +45,7 @@ namespace Client {
 			vkDestroyPipelineLayout(device, layout, nullptr);
 		}
 
-		VkPipeline& getPipeline() { return pipeline; }
+		VkPipeline& getVkPipeline() { return pipeline; }
 
 		VkPipelineLayout& getPipelineLayout() { return layout; }
 	};

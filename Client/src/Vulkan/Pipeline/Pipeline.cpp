@@ -37,10 +37,8 @@ namespace Client {
 
 		if (fragPath.has_value() && vertPath.has_value()) {
 			VkPipelineShaderStageCreateInfo shaderStages[2];
-			std::cout << vertPath.value();
-			auto a = readFile(currentPath + vertPath.value());
 			VkShaderModule vertShaderModule =
-				createShaderModule(a, device);
+				createShaderModule(readFile(currentPath + vertPath.value()), device);
 			shaderStages[0] = getPipelineShaderStageCreateInfo(
 				VK_SHADER_STAGE_VERTEX_BIT, vertShaderModule, "main");
 

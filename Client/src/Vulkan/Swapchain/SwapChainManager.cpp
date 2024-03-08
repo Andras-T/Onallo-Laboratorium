@@ -2,19 +2,28 @@
 
 namespace Client {
 
-	void SwapChainManager::init(VkSurfaceKHR& surface, DeviceManager* deviceManager, GLFWwindow* window) {
+	void SwapChainManager::init(VkSurfaceKHR& surface, VkRenderPass& renderPass, DeviceManager& deviceManager, GLFWwindow* window) {
 		this->indices = indices;
 		this->window = window;
-		this->deviceManager = deviceManager;
-		indices = deviceManager->getIndices();
+		this->deviceManager = &deviceManager;
+		this->surface = &surface;
+		this->renderPass = &renderPass;
+		indices = deviceManager.getIndices();
 
-		createSwapChain(surface);
-		images.init(MAX_FRAMES_IN_FLIGHT);
+		createSwapChain();
+		createImageViews();
 	}
 
-	void SwapChainManager::createSwapChain(VkSurfaceKHR& surface) {
+	void SwapChainManager::cleanUp() {
+		for (auto& framebuffer : frameBuffers)
+			vkDestroyFramebuffer(deviceManager->getLogicalDevice(), framebuffer, nullptr);
+
+		vkDestroySwapchainKHR(deviceManager->getLogicalDevice(), swapChain, nullptr);
+	}
+
+	void SwapChainManager::createSwapChain() {
 		SwapChainSupportDetails swapChainSupport =
-			querySwapChainSupport(surface);
+			querySwapChainSupport(*surface);
 
 		VkSurfaceFormatKHR surfaceFormat =
 			chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -22,7 +31,7 @@ namespace Client {
 			chooseSwapPresentMode(swapChainSupport.presentModes);
 		VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
 
-		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+		uint32_t imageCount = swapChainSupport.capabilities.minImageCount;
 		if (swapChainSupport.capabilities.maxImageCount > 0 &&
 			imageCount > swapChainSupport.capabilities.maxImageCount) {
 			imageCount = swapChainSupport.capabilities.maxImageCount;
@@ -30,7 +39,7 @@ namespace Client {
 
 		VkSwapchainCreateInfoKHR createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		createInfo.surface = surface;
+		createInfo.surface = *surface;
 		minImageCount = imageCount;
 		createInfo.minImageCount = imageCount;
 		createInfo.imageFormat = surfaceFormat.format;
@@ -62,11 +71,85 @@ namespace Client {
 		}
 
 		vkGetSwapchainImagesKHR(deviceManager->getLogicalDevice(), swapChain, &imageCount, nullptr);
+		swapChainImages.resize(imageCount);
 		vkGetSwapchainImagesKHR(deviceManager->getLogicalDevice(), swapChain, &imageCount,
-			images.getImages().data());
+			swapChainImages.data());
 
 		swapChainImageFormat = surfaceFormat.format;
 		swapChainExtent = extent;
+	}
+
+	void SwapChainManager::createImageViews() {
+		swapChainImageViews.resize(swapChainImages.size());
+
+		for (size_t i = 0; i < swapChainImages.size(); i++) {
+			VkImageViewCreateInfo createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			createInfo.image = swapChainImages[i];
+			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			createInfo.format = swapChainImageFormat;
+			createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+			createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			createInfo.subresourceRange.baseMipLevel = 0;
+			createInfo.subresourceRange.levelCount = 1;
+			createInfo.subresourceRange.baseArrayLayer = 0;
+			createInfo.subresourceRange.layerCount = 1;
+
+			if (vkCreateImageView(deviceManager->getLogicalDevice(), &createInfo, nullptr,
+				&swapChainImageViews[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create image views!");
+			}
+		}
+	}
+
+	void SwapChainManager::recreateSwapChain() {
+		int width = 0, height = 0;
+		glfwGetFramebufferSize(window, &width, &height);
+		while (width == 0 || height == 0) {
+			glfwGetFramebufferSize(window, &width, &height);
+			glfwWaitEvents();
+		}
+
+		vkDeviceWaitIdle(deviceManager->getLogicalDevice());
+
+		cleanUp();
+
+		createSwapChain();
+		createImageViews();
+		createFrameBuffers();
+	}
+
+	void SwapChainManager::createImages(VkDevice& device, VkPhysicalDevice& physicalDevice) {
+		//images.createImage(swapChainExtent.width, swapChainExtent.height, swapChainImageFormat, VK_IMAGE_TILING_OPTIMAL,
+		//	VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		//	VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, device, physicalDevice);
+		//images.createImageView(swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, device);
+	}
+
+	void SwapChainManager::createFrameBuffers() {
+		frameBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		for (int i = 0; i < frameBuffers.size(); i++) {
+			std::array<VkImageView, 1> attachments = { swapChainImageViews[i] };
+
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = *renderPass;
+			framebufferInfo.attachmentCount =
+				static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.width = swapChainExtent.width;
+			framebufferInfo.height = swapChainExtent.height;
+			framebufferInfo.layers = 1;
+
+			if (vkCreateFramebuffer(deviceManager->getLogicalDevice(), &framebufferInfo, nullptr,
+				&frameBuffers[i]) != VK_SUCCESS) {
+				throw std::runtime_error("Failed to create framebuffer!");
+			}
+		}
+		Logger::getInstance().LogInfo("Framebuffers created successfully!");
 	}
 
 	SwapChainSupportDetails SwapChainManager::querySwapChainSupport(VkSurfaceKHR& surface) {

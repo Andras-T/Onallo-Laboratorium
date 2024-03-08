@@ -13,12 +13,14 @@ const bool enableValidationLayers = true;
 #include "GLFW/glfw3.h"
 
 #include "Logger.h"
-#include "DeviceManager.h"
+#include <Vulkan/DeviceManager/include/DeviceManager.h>
 #include <Vulkan/Swapchain/include/SwapchainManager.h>
-#include "Vulkan/Window/include/Window.h"
+#include <Vulkan/Window/include/Window.h>
 #include <Vulkan/Descriptor/include/DescriptorManager.h>
 #include <Vulkan/Pipeline/include/PipelineManager.h>
 #include <Vulkan/CommandPool/include/CommandPoolManager.h>
+#include <Vulkan/ResourceManager/include/ResourceManager.h>
+#include <Vulkan/Renderer/include/Renderer.h>
 
 namespace Client {
 
@@ -31,6 +33,7 @@ namespace Client {
 		DescriptorManager descriptorManager;
 		PipelineManager pipelineManager;
 		CommandPoolManager commandPoolManager;
+		ResourceManager resourceManager;
 
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debugMessenger;
@@ -40,6 +43,8 @@ namespace Client {
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation" };
 
+		double lastFrameTime = 0.0f;
+
 		std::mutex m;
 		std::condition_variable cv;
 		bool ready = false;
@@ -47,11 +52,17 @@ namespace Client {
 		bool connected = false;
 		bool processed = false;
 
-		void mainLoop();
+		Renderer* renderer;
 
 	public:
 
 		void init();
+
+	private:
+
+		void mainLoop();
+
+		void compileShaders();
 
 		void recieve();
 
@@ -64,6 +75,7 @@ namespace Client {
 		void setupDebugMessenger(bool enableValidationLayers);
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 		void DestroyDebugUtilsMessengerEXT();
+		void initImGui();
 		VkResult CreateDebugUtilsMessengerEXT(VkInstance& instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 		void createRenderPass(VkFormat imageformat);
 

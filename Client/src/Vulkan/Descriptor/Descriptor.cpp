@@ -50,6 +50,7 @@ namespace Client {
 		}
 	}
 
+	// TODO
 	void Descriptor::createDescriptorSets(VkDevice& device)
 	{
 	}

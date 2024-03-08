@@ -1,5 +1,9 @@
 #include "include/Core.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_internal.h"
+#include "imgui_impl_vulkan.h"
 #include <thread>
+#include <filesystem>
 
 namespace Client {
 
@@ -7,19 +11,32 @@ namespace Client {
 		logger = &(Logger::getInstance());
 		logger->LogInfo("Init Core");
 
+		compileShaders();
 		window.init("Onallo Laboratorium");
 		createInstance(enableValidationLayers);
 		setupDebugMessenger(enableValidationLayers);
 		createSurface(*window.get_GLFW_Window());
 		deviceManager.init(instance, surface, enableValidationLayers);
-		swapChainManager.init(surface, &deviceManager, window.get_GLFW_Window());
+		swapChainManager.init(surface, renderPass, deviceManager, window.get_GLFW_Window());
 		createRenderPass(swapChainManager.getSwapChainImageFormat());
 		descriptorManager.init();
-		pipelineManager.init(deviceManager.getLogicalDevice(), std::nullopt/*descriptorManager[0].getDescriptorSetLayout()*/,
+		pipelineManager.init(deviceManager.getLogicalDevice(), std::nullopt,
 			renderPass);
 		commandPoolManager.createCommandPool(deviceManager.getLogicalDevice(), deviceManager.getIndices());
 		swapChainManager.createImages(deviceManager.getLogicalDevice(), deviceManager.getPhysicalDevice());
-		swapChainManager.createFrameBuffers(renderPass);
+		swapChainManager.createFrameBuffers();
+		descriptorManager.createDescriptorPool(deviceManager.getLogicalDevice());
+		resourceManager.init(deviceManager, commandPoolManager.getCommandPool());
+		descriptorManager.createDescriptorSets(deviceManager.getLogicalDevice());
+		commandPoolManager.createCommandBuffers(deviceManager.getLogicalDevice());
+		commandPoolManager.createImGuiCommandBuffers(deviceManager.getLogicalDevice());
+
+		renderer = new Renderer(window, deviceManager, swapChainManager,
+			descriptorManager, pipelineManager, commandPoolManager, resourceManager, renderPass);
+
+		renderer->createSyncObjects();
+		//TODO: fix imgui
+		//initImGui();
 
 		std::thread reciever(&Core::recieve, this);
 
@@ -42,6 +59,7 @@ namespace Client {
 
 	void Core::cleanUp()
 	{
+		delete renderer;
 		swapChainManager.cleanUp();
 		pipelineManager.cleanUp(deviceManager.getLogicalDevice());
 		vkDestroyRenderPass(deviceManager.getLogicalDevice(), renderPass, nullptr);
@@ -63,7 +81,10 @@ namespace Client {
 		{
 			glfwPollEvents();
 			//...
-			Window::lastTime = glfwGetTime();
+			renderer->drawFrame(lastFrameTime);
+			double currentTime = glfwGetTime();
+			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
+			Window::lastTime = currentTime;
 
 			if (connected)
 			{
@@ -100,6 +121,19 @@ namespace Client {
 			cv.notify_one();
 		}
 		cleanUp();
+	}
+
+	void Core::compileShaders() {
+#ifdef DEBUG_MACRO
+		const std::string compileCommand = "start cmd.exe /K" +
+			std::filesystem::current_path().string() + "\\..\\..\\..\\..\\Client\\shaders\\compileDebug.bat";
+#endif
+#ifdef RELEASE_MACRO
+		const std::string compileCommand = "start cmd.exe /K" +
+			std::filesystem::current_path().string() + "\\..\\..\\..\\..\\Client\\shaders\\compileRelease.bat";
+#endif
+
+		system(compileCommand.c_str());
 	}
 
 	void Core::check_vk_result(VkResult err) {
@@ -156,7 +190,7 @@ namespace Client {
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 		VkAttachmentReference colorAttachmentRef{};
 		colorAttachmentRef.attachment = 0;
@@ -319,5 +353,43 @@ namespace Client {
 		if (func != nullptr) {
 			func(instance, debugMessenger, nullptr);
 		}
+	}
+
+	void Core::initImGui() {
+		logger = &(Logger::getInstance());
+		logger->LogInfo("Setting up ImGui");
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		ImGui_ImplGlfw_InitForVulkan(window.get_GLFW_Window(), true);
+
+		ImGui::GetIO().FontGlobalScale = 1.0f;
+
+		ImGui::StyleColorsDark();
+
+		ImGui_ImplVulkan_InitInfo init_info = {};
+		init_info.Instance = instance;
+		init_info.Device = deviceManager.getLogicalDevice();
+		init_info.PhysicalDevice = deviceManager.getPhysicalDevice();
+		init_info.QueueFamily = deviceManager.getQueueFamily();
+		init_info.Queue = deviceManager.getGraphicsQueue();
+		init_info.DescriptorPool = descriptorManager.getDescriptor("").value().getDescriptorPool();
+		init_info.MinImageCount = swapChainManager.getMinImageCount();
+		init_info.ImageCount = swapChainManager.getSwapchainImageCount();
+		init_info.Subpass = 0;
+		VkPipelineCache m_pipeline_cache{ nullptr };
+		init_info.PipelineCache = m_pipeline_cache;
+		init_info.Allocator = nullptr;
+		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+		init_info.CheckVkResultFn = check_vk_result;
+		init_info.RenderPass = renderPass;
+		ImGui_ImplVulkan_Init(&init_info);
+
+		VkCommandBuffer commandBuffer = commandPoolManager.beginSingleTimeCommands(deviceManager.getLogicalDevice());
+		ImGui_ImplVulkan_CreateFontsTexture();
+		commandPoolManager.endSingleTimeCommands(deviceManager.getLogicalDevice(), commandBuffer,
+			deviceManager.getGraphicsQueue());
+
+		vkDeviceWaitIdle(deviceManager.getLogicalDevice());
 	}
 }

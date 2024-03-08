@@ -19,5 +19,6 @@ namespace Client {
 
 		void cleanUp(VkDevice& device);
 
+		Pipeline& getPipeline() { return pipeline; }
 	};
 }

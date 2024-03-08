@@ -12,7 +12,7 @@ set(SOURCES
         src/main.cpp
         src/Vulkan/Core.cpp
         src/Vulkan/Window/Window.cpp
-        src/Vulkan/DeviceManager.cpp
+        src/Vulkan/DeviceManager/DeviceManager.cpp
         src/Vulkan/Swapchain/SwapChainManager.cpp
         src/Vulkan/Swapchain/Images.cpp
         src/Vulkan/Descriptor/DescriptorManager.cpp
@@ -20,6 +20,8 @@ set(SOURCES
         src/Vulkan/Pipeline/PipelineManager.cpp
         src/Vulkan/Pipeline/Pipeline.cpp
         src/Vulkan/CommandPool/CommandPoolManager.cpp
+        src/Vulkan/ResourceManager/ResourceManager.cpp
+        src/Vulkan/Renderer/Renderer.cpp
 
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp 
         ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
@@ -35,8 +37,25 @@ set(SOURCES
         ${LOGGER_DIR}/Logger.cpp)
 
 add_executable(Client ${SOURCES} ../res/app.o)
+
 FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/shaders")
 
 find_package(Vulkan REQUIRED)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends ${STB_DIR} ${LOGGER_DIR} src)
 target_link_libraries(Client glfw glm GameNetworkingSockets Vulkan::Vulkan)
+
+# Set a macro for Debug mode
+set_property(
+    TARGET Client 
+    APPEND 
+    PROPERTY COMPILE_DEFINITIONS 
+    $<$<CONFIG:Debug>:DEBUG_MACRO>
+)
+
+# Set a macro for Release mode
+set_property(
+    TARGET Client 
+    APPEND 
+    PROPERTY COMPILE_DEFINITIONS 
+    $<$<CONFIG:Release>:RELEASE_MACRO>
+)
