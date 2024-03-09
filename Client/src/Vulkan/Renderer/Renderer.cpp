@@ -163,7 +163,7 @@ namespace Client {
 
 		vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 		
-		UserInterface::draw(window.get_GLFW_Window(), commandPoolManager.getCommandBuffers()[currentFrame]);
+		UserInterface::draw(window, commandPoolManager.getCommandBuffers()[currentFrame]);
 
 		vkCmdEndRenderPass(commandBuffer);
 

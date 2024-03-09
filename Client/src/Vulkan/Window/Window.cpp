@@ -92,7 +92,7 @@ void Window::changeDisplayMode() {
 
 void Window::framebufferResizeCallback(GLFWwindow* window, int width,
 	int height) {
-	Logger::getInstance().LogInfo("Window resize callback");
+	Logger::getInstance().LogTrace("Window resize callback");
 	auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 	app->framebufferResized = true;
 }
