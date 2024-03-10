@@ -3,6 +3,8 @@
 
 namespace Server {
 
+
+
 	SteamNetworkingMicroseconds g_logTimeZero;
 	ServerNetworking* ServerNetworking::s_pCallbackInstance = nullptr;
 
@@ -54,21 +56,20 @@ namespace Server {
 	void ServerNetworking::run() {
 		PollIncomingMessages();
 		PollConnectionStateChanges();
-		
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		SendMessageToAllClients("Hello There!", Unreliable);
+		std::this_thread::sleep_for(std::chrono::milliseconds(25));
 	}
 
 	void ServerNetworking::closeConnetions() {
 		// Close all the connections
 		Logger::getInstance().LogInfo("Closing connections...\n");
+		SendMessageToAllClients("Goodbye!", Unreliable);
 		for (auto it : m_mapClients)
 		{
-			// Send them one more goodbye message.  Note that we also have the
+			// Note that we also have the
 			// connection close reason as a place to send final data.  However,
 			// that's usually best left for more diagnostic/debug text not actual
 			// protocol strings.
-			//SendStringToClient(it.first, "Server is shutting down.  Goodbye.");
-
 			// Close the connection.  We use "linger mode" to ask SteamNetworkingSockets
 			// to flush this out and close gracefully.
 			m_pInterface->CloseConnection(it.first, 0, "Server Shutdown", true);
@@ -80,6 +81,13 @@ namespace Server {
 
 		m_pInterface->DestroyPollGroup(m_hPollGroup);
 		m_hPollGroup = k_HSteamNetPollGroup_Invalid;
+	}
+
+	void ServerNetworking::SendMessageToAllClients(const void* data, MessageFlags flag) {
+		for (auto& [connection, name] : m_mapClients)
+		{
+			m_pInterface->SendMessageToConnection(connection, data, (uint32)sizeof(data), flag, nullptr);
+		}
 	}
 
 	void ServerNetworking::PollIncomingMessages()

@@ -116,7 +116,7 @@ namespace Client {
 	bool ClientNetworking::run() {
 		PollIncomingMessages();
 		PollConnectionStateChanges();
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(25));
 		return quit;
 	}
 
@@ -129,6 +129,10 @@ namespace Client {
 				break;
 			if (numMsgs < 0)
 				Logger::getInstance().LogError("Error checking for messages");
+
+			char* char_ptr = static_cast<char*>(pIncomingMsg->m_pData);
+			std::string str(char_ptr, pIncomingMsg->m_cbSize);
+			Logger::getInstance().LogInfo(str);
 		}
 	}
 

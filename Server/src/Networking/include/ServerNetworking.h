@@ -31,6 +31,16 @@ namespace Server {
 #endif
 	}
 
+	enum MessageFlags {
+		Unreliable = 0,
+		NoNagle = 1,
+		UnreliableNoNagle = Unreliable | NoNagle,
+		NoDelay = 4,
+		UnreliableNoDelay = Unreliable | NoDelay | NoNagle,
+		Reliable = 8,
+		ReliableNoNagle = Reliable | NoNagle
+	};
+
 	class ServerNetworking {
 		static bool quit;
 		ISteamNetworkingSockets* m_pInterface;
@@ -56,6 +66,8 @@ namespace Server {
 		void closeConnetions();
 
 	private:
+
+		void SendMessageToAllClients(const void* data, MessageFlags flag);
 
 		static void DebugOutput(ESteamNetworkingSocketsDebugOutputType eType, const char* pszMsg);
 		
