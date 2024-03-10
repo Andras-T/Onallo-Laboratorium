@@ -13,6 +13,7 @@ const bool enableValidationLayers = true;
 #include "GLFW/glfw3.h"
 
 #include "Logger.h"
+#include <Networking/include/ClientNetworking.h>
 #include <Vulkan/DeviceManager/include/DeviceManager.h>
 #include <Vulkan/Swapchain/include/SwapchainManager.h>
 #include <Vulkan/Window/include/Window.h>
@@ -47,12 +48,14 @@ namespace Client {
 
 		std::mutex m;
 		std::condition_variable cv;
-		bool ready = false;
+		bool ready = true;
 		bool windowShouldClose = false;
 		bool connected = false;
 		bool processed = false;
 
 		Renderer* renderer;
+
+		ClientNetworking client;
 
 	public:
 

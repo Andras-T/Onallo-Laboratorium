@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(Client)
 
+set(CMAKE_TOOLCHAIN_FILE C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -23,6 +24,7 @@ set(SOURCES
         src/Vulkan/ResourceManager/ResourceManager.cpp
         src/Vulkan/Renderer/Renderer.cpp
         src/Vulkan/UI/UserInterface.cpp
+        src/Networking/ClientNetworking.cpp
 
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp 
         ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
@@ -43,7 +45,9 @@ FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/shaders")
 
 find_package(Vulkan REQUIRED)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends ${STB_DIR} ${LOGGER_DIR} src)
-target_link_libraries(Client glfw glm GameNetworkingSockets Vulkan::Vulkan)
+target_link_libraries(Client glfw glm Vulkan::Vulkan 
+GameNetworkingSockets::GameNetworkingSockets GameNetworkingSockets::static GameNetworkingSockets::shared GameNetworkingSockets::GameNetworkingSockets_s) 
+# 
 
 # Set a macro for Debug mode
 set_property(

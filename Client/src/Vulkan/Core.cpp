@@ -5,6 +5,7 @@
 #include <thread>
 #include <filesystem>
 
+
 namespace Client {
 
 	void Core::init() {
@@ -33,10 +34,10 @@ namespace Client {
 
 		renderer = new Renderer(window, deviceManager, swapChainManager,
 			descriptorManager, pipelineManager, commandPoolManager, resourceManager, renderPass);
-
 		renderer->createSyncObjects();
-		//TODO: fix imgui
 		initImGui();
+
+		ClientNetworking::InitSteamDatagramConnectionSockets();
 	}
 
 	void Core::run() {
@@ -48,14 +49,31 @@ namespace Client {
 	}
 
 	void Core::recieve() {
-		std::unique_lock lk(m);
-		cv.wait(lk, [&] { return ready || windowShouldClose; });
+		{
+			std::unique_lock lk(m);
+			cv.wait(lk, [&] { return ready || windowShouldClose; });
+		}
+		bool networkFail = false;
+		SteamNetworkingIPAddr addrServer;
+		addrServer.Clear();
+		addrServer.ParseString("127.0.0.1.");
+		addrServer.m_port = DEFAULT_SERVER_PORT;
+
+		connected = client.connect(addrServer);
+		networkFail = !connected;
+
 
 		// TODO: store the data in an array
-		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
+		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && !networkFail)
 		{
-			//...recieve data
+			networkFail = client.run();
 		}
+
+		client.closeConnection();
+		
+		if (networkFail)
+			logger->LogError("Reciever loop stopped due to network issues!");
+
 		logger->LogInfo("Thread is stopping", "[enginge - reciever]");
 	}
 
@@ -74,7 +92,7 @@ namespace Client {
 		descriptorManager.cleanUp(deviceManager.getLogicalDevice());
 		resourceManager.cleanUp(deviceManager.getLogicalDevice());
 		commandPoolManager.cleanUp(deviceManager.getLogicalDevice());
-		
+
 		renderer->cleanUp();
 		delete renderer;
 
@@ -91,49 +109,29 @@ namespace Client {
 	}
 
 	void Core::mainLoop() {
+
 		//while not connected render only the UI
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
 			glfwPollEvents();
-			//...
 			renderer->drawFrame(lastFrameTime);
 			double currentTime = glfwGetTime();
 			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
 			Window::lastTime = currentTime;
 
 			if (connected)
-			{
-				// Signals to the reciever that it is ready to display the shared images
-				{
-					std::lock_guard lk(m);
-					ready = true;
-					cv.notify_one();
-					logger->LogInfo("Ready for processing");
-				}
 				break;
-			}
 
 		}
-
+		// TODO: render the recieved images
+		// connected AND ready to render
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
-			// wait for the reciever
-			{
-				std::unique_lock lk(m);
-				cv.wait(lk, [&] { return processed; });
-				if (glfwWindowShouldClose(window.get_GLFW_Window()))
-					break;
-			}
 			glfwPollEvents();
-			//...
-			Window::lastTime = glfwGetTime();
-		}
-
-		// Signals to the reciever that the window is being closed
-		{
-			std::lock_guard lk(m);
-			windowShouldClose = true;
-			cv.notify_one();
+			renderer->drawFrame(lastFrameTime);
+			double currentTime = glfwGetTime();
+			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
+			Window::lastTime = currentTime;
 		}
 	}
 
