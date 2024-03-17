@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 project(Server)
 
-set(CMAKE_TOOLCHAIN_FILE C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -12,6 +11,22 @@ set(LOGGER_DIR ../lib/logger)
 set(SOURCES
         src/main.cpp
         src/Vulkan/Core.cpp
+        src/Vulkan/HeadlessCore.cpp
+        src/Vulkan/WindowedCore.cpp
+        src/Vulkan/CommandPool/CommandPoolManager.cpp
+        src/Vulkan/Descriptor/DescriptorManager.cpp
+        src/Vulkan/Descriptor/Descriptor.cpp
+        src/Vulkan/DeviceManager/DeviceManager.cpp
+        src/Vulkan/Pipeline/Pipeline.cpp
+        src/Vulkan/Pipeline/PipelineManager.cpp
+        src/Vulkan/ResourceManager/Images.cpp
+        src/Vulkan/ResourceManager/ResourceManager.cpp
+        src/Vulkan/Renderer/Renderer.cpp
+        src/Vulkan/Renderer/OffScreenRenderer.cpp
+        src/Vulkan/Renderer/WindowedRenderer.cpp
+        src/Vulkan/SwapChain/SwapChainManager.cpp
+        src/Vulkan/Utils/Constants.h
+        src/Vulkan/Window/Window.cpp
         src/Networking/ServerNetworking.cpp
 
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp 
@@ -28,26 +43,8 @@ set(SOURCES
         ${LOGGER_DIR}/Logger.cpp)
 
 add_executable(Server ${SOURCES} ../res/app.o)
-FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/shaders")
+FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Server/shaders")
 
-find_package(GameNetworkingSockets CONFIG REQUIRED)
-find_package(Vulkan REQUIRED)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends ${STB_DIR} ${LOGGER_DIR} src)
-target_link_libraries(Server glfw glm Vulkan::Vulkan 
-GameNetworkingSockets::GameNetworkingSockets GameNetworkingSockets::static GameNetworkingSockets::shared GameNetworkingSockets::GameNetworkingSockets_s)
-
-# Set a macro for Debug mode
-set_property(
-    TARGET Server 
-    APPEND 
-    PROPERTY COMPILE_DEFINITIONS 
-    $<$<CONFIG:Debug>:DEBUG_MACRO>
-)
-
-# Set a macro for Release mode
-set_property(
-    TARGET Server
-    APPEND 
-    PROPERTY COMPILE_DEFINITIONS 
-    $<$<CONFIG:Release>:RELEASE_MACRO>
-)
+target_link_libraries(Server glfw glm Vulkan::Vulkan GameNetworkingSockets::GameNetworkingSockets)
+#  GameNetworkingSockets::static GameNetworkingSockets::shared GameNetworkingSockets::GameNetworkingSockets_s

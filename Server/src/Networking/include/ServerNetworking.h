@@ -67,7 +67,7 @@ namespace Server {
 
 	private:
 
-		void SendMessageToAllClients(const void* data, MessageFlags flag);
+		void SendMessageToAllClients(const void* data, uint32 size, MessageFlags flag);
 
 		static void DebugOutput(ESteamNetworkingSocketsDebugOutputType eType, const char* pszMsg);
 		

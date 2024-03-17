@@ -3,15 +3,13 @@
 
 namespace Server {
 
-
-
 	SteamNetworkingMicroseconds g_logTimeZero;
 	ServerNetworking* ServerNetworking::s_pCallbackInstance = nullptr;
 
 	void ServerNetworking::InitSteamDatagramConnectionSockets() {
 		SteamDatagramErrMsg errMsg;
 		if (!GameNetworkingSockets_Init(nullptr, errMsg))
-			Logger::getInstance().LogError(std::string("GameNetworkingSockets_Init failed. ") + errMsg);
+			Logger::getInstance().LogError(std::format("GameNetworkingSockets_Init failed. {}", errMsg));
 		else
 			Logger::getInstance().LogInfo("GameNetworkingSockets_Init succeded");
 
@@ -56,14 +54,14 @@ namespace Server {
 	void ServerNetworking::run() {
 		PollIncomingMessages();
 		PollConnectionStateChanges();
-		SendMessageToAllClients("Hello There!", Unreliable);
-		std::this_thread::sleep_for(std::chrono::milliseconds(25));
+		SendMessageToAllClients("Hello There!", sizeof(char) * 13, Unreliable);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
 
 	void ServerNetworking::closeConnetions() {
 		// Close all the connections
 		Logger::getInstance().LogInfo("Closing connections...\n");
-		SendMessageToAllClients("Goodbye!", Unreliable);
+		SendMessageToAllClients("Goodbye!", sizeof(char) * 9, Unreliable);
 		for (auto it : m_mapClients)
 		{
 			// Note that we also have the
@@ -83,10 +81,10 @@ namespace Server {
 		m_hPollGroup = k_HSteamNetPollGroup_Invalid;
 	}
 
-	void ServerNetworking::SendMessageToAllClients(const void* data, MessageFlags flag) {
+	void ServerNetworking::SendMessageToAllClients(const void* data, uint32 size, MessageFlags flag) {
 		for (auto& [connection, name] : m_mapClients)
 		{
-			m_pInterface->SendMessageToConnection(connection, data, (uint32)sizeof(data), flag, nullptr);
+			m_pInterface->SendMessageToConnection(connection, data, size, flag, nullptr);
 		}
 	}
 
@@ -178,7 +176,7 @@ namespace Server {
 			// This must be a new connection
 			assert(m_mapClients.find(pInfo->m_hConn) == m_mapClients.end());
 
-			Logger::getInstance().LogInfo("Connection request from " + std::string(pInfo->m_info.m_szConnectionDescription));
+			Logger::getInstance().LogInfo(std::format("Connection request from {}", pInfo->m_info.m_szConnectionDescription));
 
 			// A client is attempting to connect
 			// Try to accept the connection.
