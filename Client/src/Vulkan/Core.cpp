@@ -23,7 +23,7 @@ namespace Client {
 		pipelineManager.init(deviceManager.getLogicalDevice(), std::nullopt,
 			renderPass);
 		commandPoolManager.createCommandPool(deviceManager.getLogicalDevice(), deviceManager.getIndices());
-		swapChainManager.createImages(deviceManager.getLogicalDevice(), deviceManager.getPhysicalDevice());
+		//swapChainManager.createImages(deviceManager.getLogicalDevice(), deviceManager.getPhysicalDevice());
 		swapChainManager.createFrameBuffers();
 		descriptorManager.createDescriptorPool(deviceManager.getLogicalDevice());
 		resourceManager.init(deviceManager, commandPoolManager.getCommandPool());

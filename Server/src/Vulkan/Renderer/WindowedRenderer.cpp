@@ -66,6 +66,8 @@ namespace Server {
 			Window::framebufferResized) {
 			Window::framebufferResized = false;
 			swapChainManager.recreateSwapChain();
+			resourceManager.destroyFrameBuffers(device);
+			resourceManager.createFrameBuffers(swapChainManager.getSwapChainImageViews(), renderPass, device, swapChainManager.getSwapChainExtent());
 			// TODO: create recreateDescriptorSets function
 			//descriptorManager.recreateDescriptorSets();
 		}

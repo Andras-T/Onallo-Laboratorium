@@ -28,6 +28,11 @@ namespace Server {
 			presentImages.createImageView(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, device);
 		}
 
+		void destroyFrameBuffers(VkDevice& device) {
+			for (auto& framebuffer : frameBuffers)
+				vkDestroyFramebuffer(device, framebuffer, nullptr);
+		}
+
 		void cleanUp(VkDevice& device) {
 			vkDestroyBuffer(device, quadBuffer, nullptr);
 			vkFreeMemory(device, quadMemory, nullptr);

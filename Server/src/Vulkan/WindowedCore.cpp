@@ -72,10 +72,7 @@ namespace Server {
 		check_vk_result(vkDeviceWaitIdle(device));
 
 		swapChainManager.cleanUp();
-
-
-		for (auto& framebuffer : resourceManager.getFrameBuffers())
-			vkDestroyFramebuffer(device, framebuffer, nullptr);
+		resourceManager.destroyFrameBuffers(device);
 
 		pipelineManager.cleanUp(device);
 		vkDestroyRenderPass(device, renderPass, nullptr);

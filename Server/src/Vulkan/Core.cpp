@@ -4,10 +4,8 @@
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
-bool debugging = false;
 #else
 const bool enableValidationLayers = true;
-bool debugging = true;
 #endif
 
 namespace Server {
@@ -19,8 +17,6 @@ namespace Server {
 		sender.join();
 		cleanUp();
 	}
-
-
 
 	void Core::compileShaders() {
 #ifdef NDEBUG
