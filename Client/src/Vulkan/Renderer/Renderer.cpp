@@ -36,7 +36,7 @@ namespace Client {
 		}
 	}
 
-	void Renderer::drawFrame(uint32_t lastFrameTime)
+	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput)
 	{
 		auto& device = deviceManager.getLogicalDevice();
 
@@ -60,7 +60,7 @@ namespace Client {
 
 		auto& commandBuffer = commandPoolManager.getCommandBuffers()[currentFrame];
 		vkResetCommandBuffer(commandBuffer, 0);
-		recordCommandBuffer(commandBuffer, imageIndex);
+		recordCommandBuffer(commandBuffer, imageIndex, uiInput);
 
 		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
 		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
@@ -110,7 +110,7 @@ namespace Client {
 	}
 
 	// TODO
-	void Renderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex)
+	void Renderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput)
 	{
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -161,9 +161,10 @@ namespace Client {
 		//	pipelineManager->getBlurPipelineLayout(), 0, 1,
 		//	descriptorSet, 0, nullptr);
 
+
 		vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 		
-		UserInterface::draw(window, commandPoolManager.getCommandBuffers()[currentFrame]);
+		UserInterface::draw(window, commandPoolManager.getCommandBuffers()[currentFrame], uiInput);
 
 		vkCmdEndRenderPass(commandBuffer);
 

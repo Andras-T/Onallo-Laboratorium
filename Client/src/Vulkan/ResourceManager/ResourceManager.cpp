@@ -2,6 +2,7 @@
 #include "include/Quad.h"
 
 namespace Client {
+
     void ResourceManager::init(DeviceManager& deviceManager, VkCommandPool& commandPool)
     {
         createVertexBuffer(deviceManager, commandPool, Quad::quadVertices.data(),

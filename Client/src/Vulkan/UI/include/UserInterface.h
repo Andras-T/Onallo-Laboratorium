@@ -9,16 +9,18 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_internal.h"
 #include <Vulkan/Window/include/Window.h>
+#include <Vulkan/Utils/Input.h>
 
 namespace Client {
-	
+
 	class UserInterface {
-		
+
 		static void createFPSCounter();
+		static void connectionWindow(Input& uiInput);
 		static void createMenuBar(Window& window);
 		static void menuShortcuts(Window& window);
 
 	public:
-		static void draw(Window& window, VkCommandBuffer& commandBuffer);
+		static void draw(Window& window, VkCommandBuffer& commandBuffer, Input& uiInput);
 	};
 }

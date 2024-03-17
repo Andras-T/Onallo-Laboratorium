@@ -10,6 +10,7 @@
 #include <Vulkan/Pipeline/include/PipelineManager.h>
 #include <Vulkan/CommandPool/include/CommandPoolManager.h>
 #include <Vulkan/ResourceManager/include/ResourceManager.h>
+#include <Vulkan/Utils/Input.h>
 
 namespace Client {
 	
@@ -47,9 +48,9 @@ namespace Client {
 
 		void createSyncObjects();
 
-		void drawFrame(uint32_t lastFrameTime);
+		void drawFrame(uint32_t lastFrameTime, Input& uiInput);
 
-		void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
+		void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput);
 	
 		void cleanUp();
 	};

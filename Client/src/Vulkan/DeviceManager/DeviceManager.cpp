@@ -1,4 +1,5 @@
 #include "include/DeviceManager.h"
+#include <Vulkan/Utils/QueueFamilyIndices.h>
 
 namespace Client {
 
@@ -115,20 +116,11 @@ namespace Client {
 		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 		VkPhysicalDeviceProperties pProperties;
 
-		if (logger->getSeverity() == Trace)
-		{
-			logger->LogTrace("The following graphics devices are currently available:");	
-			for (auto& physicalDevice : devices) {
-				vkGetPhysicalDeviceProperties(physicalDevice, &pProperties);
-				logger->LogTrace(pProperties.deviceName);
-			}
-		}
-
 		for (auto& physicalDevice : devices) {
 			if (isDeviceSuitable(physicalDevice, surface)) {
 				this->physicalDevice = physicalDevice;
 				vkGetPhysicalDeviceProperties(physicalDevice, &pProperties);
-				logger->LogInfo(std::string("Chosen graphic device:\t") + pProperties.deviceName);
+				logger->LogInfo(std::format("Chosen graphic device:\t {}", pProperties.deviceName));
 				break;
 			}
 		}

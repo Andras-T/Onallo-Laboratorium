@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 project(OnalloLaboratorium)
-
+set(CMAKE_TOOLCHAIN_FILE C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake)
+find_package(GameNetworkingSockets CONFIG REQUIRED)
+find_package(Vulkan REQUIRED)
 add_subdirectory(Client)
 add_subdirectory(Server)
 add_subdirectory(lib/glfw)

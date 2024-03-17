@@ -30,12 +30,19 @@ namespace Client {
 #endif
 	}
 
+	enum NetworkState {
+		Idle,
+		Connecting,
+		Connected,
+		Failed
+	};
 	
 
 	class ClientNetworking {
 		static bool quit;
+		NetworkState state = Idle;
 		static ClientNetworking* s_pCallbackInstance;
-		ISteamNetworkingSockets* m_pInterface;
+		ISteamNetworkingSockets* m_pInterface = nullptr;
 		HSteamNetConnection m_hConnection;
 		//HSteamListenSocket m_hListenSock;
 
@@ -47,9 +54,14 @@ namespace Client {
 		
 		bool connect(const SteamNetworkingIPAddr& serverAddr);
 
-		bool run();
+		NetworkState run();
 
 		void closeConnection();
+
+		void reset() {
+
+			//m_pInterface->ResetIdentity();
+		}
 
 	private:
 

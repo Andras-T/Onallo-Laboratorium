@@ -10,7 +10,7 @@ namespace Client {
 	void ClientNetworking::InitSteamDatagramConnectionSockets() {
 		SteamDatagramErrMsg errMsg;
 		if (!GameNetworkingSockets_Init(nullptr, errMsg))
-			Logger::getInstance().LogError(std::string("GameNetworkingSockets_Init failed. ") + errMsg);
+			Logger::getInstance().LogError(std::format("GameNetworkingSockets_Init failed. {}", errMsg));
 		else
 			Logger::getInstance().LogInfo("GameNetworkingSockets_Init succeded");
 
@@ -50,23 +50,23 @@ namespace Client {
 		case k_ESteamNetworkingConnectionState_ClosedByPeer:
 		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
 		{
-			quit = true;
+			state = Failed;
 
 			// Print an appropriate message
 			if (pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting)
 			{
 				// Note: we could distinguish between a timeout, a rejected connection,
 				// or some other transport problem.
-				Logger::getInstance().LogInfo("We sought the remote host, yet our efforts were met with defeat. " + std::string(pInfo->m_info.m_szEndDebug));
+				Logger::getInstance().LogInfo(std::format("We sought the remote host, yet our efforts were met with defeat. {}", pInfo->m_info.m_szEndDebug));
 			}
 			else if (pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
 			{
-				Logger::getInstance().LogInfo("Alas, troubles beset us; we have lost contact with the host. " + std::string(pInfo->m_info.m_szEndDebug));
+				Logger::getInstance().LogInfo(std::format("Alas, troubles beset us; we have lost contact with the host. {}", pInfo->m_info.m_szEndDebug));
 			}
 			else
 			{
 				// NOTE: We could check the reason code for a normal disconnection
-				Logger::getInstance().LogInfo("The host hath bidden us farewell. " + std::string(pInfo->m_info.m_szEndDebug));
+				Logger::getInstance().LogInfo(std::format("The host hath bidden us farewell. {}", pInfo->m_info.m_szEndDebug));
 			}
 
 			// Clean up the connection.  This is important!
@@ -81,12 +81,14 @@ namespace Client {
 		}
 
 		case k_ESteamNetworkingConnectionState_Connecting:
+			state = Connecting;
 			// We will get this callback when we start connecting.
 			// We can ignore this.
 			break;
 
 		case k_ESteamNetworkingConnectionState_Connected:
-			Logger::getInstance().LogInfo("Connected to server OK");
+			state = Connected;
+			Logger::getInstance().LogInfo("OnSteamNetConnectionStatusChanged: Connected to server OK");
 			break;
 
 		default:
@@ -96,12 +98,13 @@ namespace Client {
 	}
 
 	bool ClientNetworking::connect(const SteamNetworkingIPAddr& serverAddr) {
+		
 		m_pInterface = SteamNetworkingSockets();
 
 		// Start connecting
 		char szAddr[SteamNetworkingIPAddr::k_cchMaxString];
 		serverAddr.ToString(szAddr, sizeof(szAddr), true);
-		Logger::getInstance().LogInfo(std::string("Connecting to chat server at: ") + szAddr);
+		Logger::getInstance().LogInfo(std::format("Connecting to server at: {}", szAddr));
 		SteamNetworkingConfigValue_t opt;
 		opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)SteamNetConnectionStatusChangedCallback);
 		m_hConnection = m_pInterface->ConnectByIPAddress(serverAddr, 1, &opt);
@@ -110,14 +113,15 @@ namespace Client {
 			return false;
 		}
 		Logger::getInstance().LogInfo("m_hConnection: " + std::to_string(m_hConnection));
+		PollConnectionStateChanges();
 		return true;
 	}
 
-	bool ClientNetworking::run() {
+	NetworkState ClientNetworking::run() {
 		PollIncomingMessages();
 		PollConnectionStateChanges();
 		std::this_thread::sleep_for(std::chrono::milliseconds(25));
-		return quit;
+		return state;
 	}
 
 	void ClientNetworking::PollIncomingMessages() {

@@ -2,7 +2,6 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_internal.h"
 #include "imgui_impl_vulkan.h"
-#include <thread>
 #include <filesystem>
 
 
@@ -10,10 +9,10 @@ namespace Client {
 
 	void Core::init() {
 		logger = &(Logger::getInstance());
-		logger->LogInfo("Init Core");
+		logger->LogInfo("Init Client Core");
 
 		compileShaders();
-		window.init("Onallo Laboratorium");
+		window.init("Onallo Laboratorium - Client");
 		createInstance(enableValidationLayers);
 		setupDebugMessenger(enableValidationLayers);
 		createSurface(*window.get_GLFW_Window());
@@ -41,37 +40,30 @@ namespace Client {
 	}
 
 	void Core::run() {
-		std::thread reciever(&Core::recieve, this);
 
 		mainLoop();
-		reciever.join();
+		if (reciever.joinable())
+			reciever.join();
 		cleanUp();
 	}
 
 	void Core::recieve() {
-		{
-			std::unique_lock lk(m);
-			cv.wait(lk, [&] { return ready || windowShouldClose; });
-		}
-		bool networkFail = false;
+
 		SteamNetworkingIPAddr addrServer;
 		addrServer.Clear();
-		addrServer.ParseString("127.0.0.1.");
+		addrServer.ParseString(uiInput.ip_address);
 		addrServer.m_port = DEFAULT_SERVER_PORT;
-
-		connected = client.connect(addrServer);
-		networkFail = !connected;
-
-
+		state = Connecting;
+		bool valid = client.connect(addrServer);
 		// TODO: store the data in an array
-		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && !networkFail)
+		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && valid && state != Failed && !uiInput.disconnect)
 		{
-			networkFail = client.run();
+			state = client.run();
 		}
 
 		client.closeConnection();
-		
-		if (networkFail)
+
+		if (state == Failed)
 			logger->LogError("Reciever loop stopped due to network issues!");
 
 		logger->LogInfo("Thread is stopping", "[enginge - reciever]");
@@ -109,43 +101,52 @@ namespace Client {
 	}
 
 	void Core::mainLoop() {
-
-		//while not connected render only the UI
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
 			glfwPollEvents();
-			renderer->drawFrame(lastFrameTime);
+			renderer->drawFrame(lastFrameTime, uiInput);
 			double currentTime = glfwGetTime();
 			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
 			Window::lastTime = currentTime;
 
-			if (connected)
-				break;
+			if (state == Failed)
+			{
+				if (reciever.joinable())
+					reciever.join();
+				state = Idle;
+			}
 
-		}
-		// TODO: render the recieved images
-		// connected AND ready to render
-		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
-		{
-			glfwPollEvents();
-			renderer->drawFrame(lastFrameTime);
-			double currentTime = glfwGetTime();
-			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
-			Window::lastTime = currentTime;
+			if (state == Connected)
+				uiInput.connected = true;
+
+			if (uiInput.disconnect) {
+				if (reciever.joinable())
+					reciever.join();
+				state = Idle;
+				uiInput.disconnect = false;
+				uiInput.connected = false;
+			}
+
+			if (uiInput.tryToConnect && state != Connected && state != Connecting) {
+				reciever = std::thread{ &Core::recieve, this };
+				logger->LogInfo(std::format("Given ip address: {}", uiInput.ip_address));
+				uiInput.tryToConnect = false;
+			}
 		}
 	}
 
 	void Core::compileShaders() {
-#ifdef DEBUG_MACRO
+#ifdef NDEBUG
+		const std::string compileCommand = "start cmd.exe /K" +
+			std::filesystem::current_path().string() + "\\..\\..\\..\\..\\Client\\shaders\\compileRelease.bat";
+#else
 		const std::string compileCommand = "start cmd.exe /K" +
 			std::filesystem::current_path().string() + "\\..\\..\\..\\..\\Client\\shaders\\compileDebug.bat";
 #endif
-#ifdef RELEASE_MACRO
-		const std::string compileCommand = "start cmd.exe /K" +
-			std::filesystem::current_path().string() + "\\..\\..\\..\\..\\Client\\shaders\\compileRelease.bat";
-#endif
 
 		system(compileCommand.c_str());
+		// Wait for shaders to compile
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
 
 	void Core::check_vk_result(VkResult err) {
@@ -238,7 +239,7 @@ namespace Client {
 
 		if (vkCreateRenderPass(deviceManager.getLogicalDevice(), &simulationRenderPassInfo, nullptr,
 			&renderPass) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create simulation render pass!");
+			throw std::runtime_error("Failed to create simulation render pass!");
 		}
 	}
 
@@ -342,7 +343,7 @@ namespace Client {
 
 		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr,
 			&debugMessenger) != VK_SUCCESS) {
-			throw std::runtime_error("failed to set up debug messenger!");
+			throw std::runtime_error("Failed to set up debug messenger!");
 		}
 	}
 

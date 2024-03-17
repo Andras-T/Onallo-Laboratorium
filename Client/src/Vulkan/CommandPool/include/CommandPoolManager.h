@@ -4,7 +4,7 @@
 #include "GLFW/glfw3.h"
 #include <stdexcept>
 #include <vector>
-#include <Vulkan/Utils/QueueFamilyIndicies.h>
+#include <Vulkan/Utils/queueFamilyIndices.h>
 
 namespace Client {
 

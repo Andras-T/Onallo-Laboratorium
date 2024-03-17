@@ -1,32 +1,58 @@
 #include "include/UserInterface.h"
-namespace Client {
+#include <Vulkan/Utils/ImVecUtils.h>
 
-	void UserInterface::draw(Window& window, VkCommandBuffer& commandBuffer) {
+namespace Client {
+	
+	ImGuiStyle default_style;
+
+	void UserInterface::draw(Window& window, VkCommandBuffer& commandBuffer, Input& uiInput) {
+
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		ImGuiStyle& style = ImGui::GetStyle();
+		style.Colors[ImGuiCol_WindowBg].w = 0.1f;
+		style.Colors[ImGuiCol_TitleBg].w = 0.25f;
+		
+		ImGuiID dockspace_id = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+		ImGui::SetNextWindowSizeConstraints(ImVec2(300.0f, 80.0f), ImVec2(400 , 120));
+		connectionWindow(uiInput);
 		createFPSCounter();
 		createMenuBar(window);
 		menuShortcuts(window);
 
-		ImGui::Begin("Connection Window");
-		static char ip_address[64] = "";
-		// Create an input field for the IP address
-		ImGui::InputText("IP Address", ip_address, IM_ARRAYSIZE(ip_address));
-
-		// Create a "Connect" button
-		if (ImGui::Button("Connect")) {
-			// Handle the connection logic here
-			;
-		}
-
-		// End of ImGui window
-		ImGui::End();
-
 		ImGui::Render();
 		ImDrawData* draw_data = ImGui::GetDrawData();
 		ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
+	}
+
+	void UserInterface::connectionWindow(Input& uiInput) {
+		ImGuiStyle& style = ImGui::GetStyle();
+		style.WindowRounding = 7.0f;
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		
+		ImGui::Begin("Connection Window", nullptr);
+
+		style.Colors[ImGuiCol_WindowBg].w = default_style.Colors[ImGuiCol_WindowBg].w;
+
+		if (!uiInput.connected)
+		{
+			ImGui::PushItemWidth(200.0f);
+			ImGui::InputText("IP Address", uiInput.ip_address, IM_ARRAYSIZE(uiInput.ip_address));
+			ImGui::PopItemWidth();
+
+			if (ImGui::Button("Connect"))
+				uiInput.tryToConnect = true;
+
+		}
+		else {
+			if (ImGui::Button("Disconnect"))
+				uiInput.disconnect = true;
+		}
+
+		ImGui::End();
+		ImGui::PopStyleVar(1);
 	}
 
 	void UserInterface::createFPSCounter()
