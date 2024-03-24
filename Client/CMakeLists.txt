@@ -10,20 +10,20 @@ set(STB_DIR ../lib/stb)
 set(LOGGER_DIR ../lib/logger)
 set(SOURCES
         src/main.cpp
-        src/Vulkan/Core.cpp
-        src/Vulkan/Window/Window.cpp
-        src/Vulkan/DeviceManager/DeviceManager.cpp
-        src/Vulkan/Swapchain/SwapChainManager.cpp
-        src/Vulkan/Swapchain/Images.cpp
-        src/Vulkan/Descriptor/DescriptorManager.cpp
-        src/Vulkan/Descriptor/Descriptor.cpp
-        src/Vulkan/Pipeline/PipelineManager.cpp
-        src/Vulkan/Pipeline/Pipeline.cpp
-        src/Vulkan/CommandPool/CommandPoolManager.cpp
-        src/Vulkan/ResourceManager/ResourceManager.cpp
-        src/Vulkan/Renderer/Renderer.cpp
-        src/Vulkan/UI/UserInterface.cpp
         src/Networking/ClientNetworking.cpp
+        src/Vulkan/CommandPool/CommandPoolManager.cpp
+        src/Vulkan/Core.cpp
+        src/Vulkan/Descriptor/Descriptor.cpp
+        src/Vulkan/Descriptor/DescriptorManager.cpp
+        src/Vulkan/DeviceManager/DeviceManager.cpp
+        src/Vulkan/Pipeline/Pipeline.cpp
+        src/Vulkan/Pipeline/PipelineManager.cpp
+        src/Vulkan/Renderer/Renderer.cpp
+        src/Vulkan/ResourceManager/Images.cpp
+        src/Vulkan/ResourceManager/ResourceManager.cpp
+        src/Vulkan/Swapchain/SwapChainManager.cpp
+        src/Vulkan/UI/UserInterface.cpp
+        src/Vulkan/Window/Window.cpp
 
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp 
         ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp

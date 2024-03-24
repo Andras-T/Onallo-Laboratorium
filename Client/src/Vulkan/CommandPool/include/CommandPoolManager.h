@@ -26,7 +26,7 @@ namespace Client {
 		void endSingleTimeCommands(VkDevice& device, VkCommandBuffer commandBuffer,
 			VkQueue& graphicsQueue);
 
-		void transitionImageLayout(VkDevice& device, VkImage image, VkFormat format,
+		void transitionImageLayout(VkDevice& device, VkImage& image, VkFormat format,
 			VkImageLayout oldLayout, VkImageLayout newLayout, VkQueue& graphicsQueue,
 			uint32_t layerCount = 1);
 

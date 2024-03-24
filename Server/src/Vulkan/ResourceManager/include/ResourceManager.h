@@ -5,6 +5,7 @@
 #include "Images.h"
 #include <Vulkan/DeviceManager/include/DeviceManager.h>
 #include <Vulkan/Utils/Constants.h>
+#include <Vulkan/CommandPool/include/CommandPoolManager.h>
 
 namespace Server {
 
@@ -12,20 +13,32 @@ namespace Server {
 		VkBuffer quadBuffer;
 		VkDeviceMemory quadMemory;
 
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		uint32_t width = DEFAULT_WIDTH;
+		uint32_t height = DEFAULT_HEIGHT;
+		VkDeviceSize size;
+		void* mappedData;
+		uint8_t* cpuImage;
+
 		Images presentImages;
 		std::vector<VkFramebuffer> frameBuffers;
 
 	public:
 
-		void createBuffers(DeviceManager& deviceManager, VkCommandPool& commandPool);
+		void createBuffers(DeviceManager& deviceManager, VkCommandPool& commandPool, std::optional<GLFWwindow*> window);
+
+		void recreateStagingBuffer(DeviceManager& deviceManager, std::optional<GLFWwindow*> window);
+
+		void copyImageToStagingBuffer(VkImage& image, DeviceManager& deviceManager, VkCommandBuffer& commandBuffer);
 
 		void createFrameBuffers(std::vector<VkImageView>& imageViews, VkRenderPass& renderPass, VkDevice& device, std::optional<VkExtent2D> extent);
 
 		void createImages(VkDevice& device, VkPhysicalDevice& physicalDevice) {
 			presentImages.init(3);
-			presentImages.createImage(DEFAULT_WIDTH, DEFAULT_HEIGHT, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
+			presentImages.createImage(DEFAULT_WIDTH, DEFAULT_HEIGHT, defaultFormat, VK_IMAGE_TILING_LINEAR,
 				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, device, physicalDevice);
-			presentImages.createImageView(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, device);
+			presentImages.createImageView(defaultFormat, VK_IMAGE_ASPECT_COLOR_BIT, device);
 		}
 
 		void destroyFrameBuffers(VkDevice& device) {
@@ -35,7 +48,14 @@ namespace Server {
 
 		void cleanUp(VkDevice& device) {
 			vkDestroyBuffer(device, quadBuffer, nullptr);
+			vkDestroyBuffer(device, stagingBuffer, nullptr);
+
 			vkFreeMemory(device, quadMemory, nullptr);
+			vkFreeMemory(device, stagingBufferMemory, nullptr);
+		}
+
+		uint8_t* getCPUpuImage() {
+			return cpuImage;
 		}
 
 		VkBuffer& getQuadBuffer() { return quadBuffer; }
@@ -45,6 +65,8 @@ namespace Server {
 		Images& getPresentImages() {
 			return presentImages;
 		}
+
+		VkDeviceSize getCPUImageSize() { return size; }
 
 	private:
 

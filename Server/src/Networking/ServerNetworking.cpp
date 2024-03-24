@@ -51,17 +51,22 @@ namespace Server {
 		Logger::getInstance().LogInfo("Server listening on port  " + std::to_string(nPort));
 	}
 
-	void ServerNetworking::run() {
-		PollIncomingMessages();
+	NetworkMessage ServerNetworking::run(uint8_t* imgage, uint32 size) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+		//PollIncomingMessages();
 		PollConnectionStateChanges();
-		SendMessageToAllClients("Hello There!", sizeof(char) * 13, Unreliable);
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+		if (networkMessage.state == Connected)
+			SendMessageToAllClients(imgage, size, Unreliable);
+
+		return networkMessage;
 	}
 
 	void ServerNetworking::closeConnetions() {
 		// Close all the connections
 		Logger::getInstance().LogInfo("Closing connections...\n");
-		SendMessageToAllClients("Goodbye!", sizeof(char) * 9, Unreliable);
+		//SendMessageToAllClients("Goodbye!", sizeof(char) * 9, Unreliable);
 		for (auto it : m_mapClients)
 		{
 			// Note that we also have the
@@ -82,6 +87,7 @@ namespace Server {
 	}
 
 	void ServerNetworking::SendMessageToAllClients(const void* data, uint32 size, MessageFlags flag) {
+		//Logger::getInstance().LogInfo(std::format("Sending {} bytes", size));
 		for (auto& [connection, name] : m_mapClients)
 		{
 			m_pInterface->SendMessageToConnection(connection, data, size, flag, nullptr);
@@ -90,7 +96,7 @@ namespace Server {
 
 	void ServerNetworking::PollIncomingMessages()
 	{
-
+		// TODO: handle inputs from the client side
 	}
 
 	void ServerNetworking::PollConnectionStateChanges()
@@ -112,12 +118,15 @@ namespace Server {
 		switch (pInfo->m_info.m_eState)
 		{
 		case k_ESteamNetworkingConnectionState_None:
+			networkMessage.state = Idle;
 			// NOTE: We will get callbacks here when we destroy connections.  You can ignore these.
 			break;
 
 		case k_ESteamNetworkingConnectionState_ClosedByPeer:
+			networkMessage.state = Idle;
 		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
 		{
+			networkMessage.state = Failed;
 			// Ignore if they were not previously connected.  (If they disconnected
 			// before we accepted the connection.)
 			if (pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connected)
@@ -173,6 +182,7 @@ namespace Server {
 
 		case k_ESteamNetworkingConnectionState_Connecting:
 		{
+			networkMessage.state = Connecting;
 			// This must be a new connection
 			assert(m_mapClients.find(pInfo->m_hConn) == m_mapClients.end());
 
@@ -204,6 +214,8 @@ namespace Server {
 		}
 
 		case k_ESteamNetworkingConnectionState_Connected:
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			networkMessage.state = Connected;
 			// We will get a callback immediately after accepting the connection.
 			// Since we are the server, we can ignore this, it's not news to us.
 			break;

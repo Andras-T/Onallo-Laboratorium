@@ -52,6 +52,8 @@ namespace Server {
 			return swapChainImageViews;
 		}
 
+		std::vector<VkImage>& getSwapChainImages() { return swapChainImages; }
+
 	private:
 
 		void createImageViews();

@@ -40,7 +40,7 @@ namespace Client {
 		Renderer* renderer;
 
 		Input uiInput;
-		NetworkState state = Idle;
+		NetworkMessage networkMessage;
 		ClientNetworking client;
 
 		VkInstance instance;
@@ -56,6 +56,8 @@ namespace Client {
 		std::thread reciever;
 		std::mutex m;
 		std::condition_variable cv;
+		bool imageRendered = false;
+		bool recieved = false;
 
 	public:
 
@@ -76,7 +78,7 @@ namespace Client {
 		void createInstance(bool enableValidationLayers);
 		bool checkValidationLayerSupport();
 		std::vector<const char*> getRequiredExtensions(bool enableValidationLayers);
-		void createSurface(GLFWwindow& window);
+		void createSurface(GLFWwindow* window);
 		void setupDebugMessenger(bool enableValidationLayers);
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 		void DestroyDebugUtilsMessengerEXT();

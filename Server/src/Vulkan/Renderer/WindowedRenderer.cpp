@@ -68,6 +68,7 @@ namespace Server {
 			swapChainManager.recreateSwapChain();
 			resourceManager.destroyFrameBuffers(device);
 			resourceManager.createFrameBuffers(swapChainManager.getSwapChainImageViews(), renderPass, device, swapChainManager.getSwapChainExtent());
+			resourceManager.recreateStagingBuffer(deviceManager, window.get_GLFW_Window());
 			// TODO: create recreateDescriptorSets function
 			//descriptorManager.recreateDescriptorSets();
 		}
@@ -136,6 +137,8 @@ namespace Server {
 		vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffer);
+
+		resourceManager.copyImageToStagingBuffer(swapChainManager.getSwapChainImages()[imageIndex], deviceManager, commandBuffer);
 
 		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to record command buffer!");

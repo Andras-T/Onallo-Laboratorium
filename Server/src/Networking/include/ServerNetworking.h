@@ -31,6 +31,17 @@ namespace Server {
 #endif
 	}
 
+	enum NetworkState {
+		Idle,
+		Connecting,
+		Connected,
+		Failed
+	};
+
+	struct NetworkMessage {
+		NetworkState state = Idle;
+	};
+
 	enum MessageFlags {
 		Unreliable = 0,
 		NoNagle = 1,
@@ -53,6 +64,7 @@ namespace Server {
 			std::string m_sNick;
 		};
 
+		NetworkMessage networkMessage;
 		std::map< HSteamNetConnection, Client_t > m_mapClients;
 
 	public:
@@ -61,7 +73,7 @@ namespace Server {
 		
 		void start(uint16 nPort);
 
-		void run();
+		NetworkMessage run(uint8_t* imgage, uint32 size);
 
 		void closeConnetions();
 

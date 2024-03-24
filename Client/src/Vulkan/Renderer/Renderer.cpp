@@ -36,7 +36,7 @@ namespace Client {
 		}
 	}
 
-	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput)
+	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t* pImage)
 	{
 		auto& device = deviceManager.getLogicalDevice();
 
@@ -138,6 +138,14 @@ namespace Client {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			pipelineManager.getPipeline().getVkPipeline());
 
+		auto& desc = descriptorManager.getDescriptor();
+		auto& sets = desc.getDescriptorSets();
+		auto set = sets[currentFrame];
+		auto descriptorSet = &(set);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipelineManager.getPipeline().getPipelineLayout(), 0, 1,
+			descriptorSet, 0, nullptr);
+
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
@@ -155,12 +163,6 @@ namespace Client {
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &(resourceManager.getQuadBuffer()),
 			offsets);
-
-		//auto descriptorSet = &instance->getBlurDescriptorSets()[currentFrame];
-		//vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		//	pipelineManager->getBlurPipelineLayout(), 0, 1,
-		//	descriptorSet, 0, nullptr);
-
 
 		vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 		

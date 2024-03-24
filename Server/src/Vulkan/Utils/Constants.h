@@ -1,9 +1,19 @@
 #pragma once
 
-namespace Server {
+#define GLFW_INCLUDE_VULKAN
+#include "GLFW/glfw3.h"
 
-	constexpr uint32_t DEFAULT_WIDTH = 1080;
-	constexpr uint32_t DEFAULT_HEIGHT = 720;
+typedef unsigned int       uint32_t;
+
+namespace Server {
+	constexpr VkFormat defaultFormat = VK_FORMAT_R8G8B8A8_UNORM;
+	constexpr uint32_t pixelSize = 4;
+	// We can only send 524288 bytes so the max width*heigth is 362*362 with 4bytes/pixel (8bit r/g/b/a)
+	// but it's pretty slow to send max byte packages
+	// for example even with 200*200 it takes around 150ms/package for the reciever
+	// with 100*100 it's much better 20-50 ms/package but it takes 4x more package :/
+	constexpr uint32_t DEFAULT_WIDTH = 10;
+	constexpr uint32_t DEFAULT_HEIGHT = 10;
 	constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 	constexpr int DEFAULT_SERVER_PORT = 27020;
 }

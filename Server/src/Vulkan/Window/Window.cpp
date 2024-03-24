@@ -1,4 +1,5 @@
 #include "include/Window.h"
+#include <Vulkan/Utils/Constants.h>
 #include "stb_image.h"
 #include <filesystem>
 #include "Logger.h"
@@ -9,34 +10,26 @@ namespace Server {
 	double Window::lastTime = 0.0f;
 
 	void Window::init(std::string_view title) {
-			glfwInit();
+		glfwInit();
 
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		glfwWindowHint(GLFW_MAXIMIZED, GLFW_FALSE);
+		glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 
-			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
-			window = glfwCreateWindow(mode->width, mode->height,
-				title.data(), nullptr, nullptr);
+		window = glfwCreateWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT,
+			title.data(), nullptr, nullptr);
 
-			GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
-			int xpos, ypos, width, height;
-			glfwGetMonitorWorkarea(primaryMonitor, &xpos, &ypos, &width, &height);
+		initIcon();
 
-			glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
-			glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
-
-			glfwSetWindowMonitor(window, nullptr, xpos + 50, ypos + 50,
-				1920, 1080,
-				mode->refreshRate);
-
-			glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-
-			initIcon();
-
-			lastTime = glfwGetTime();
+		lastTime = glfwGetTime();
+		glfwMakeContextCurrent(window);
 	}
 
 	void Window::initIcon() {

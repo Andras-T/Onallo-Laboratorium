@@ -37,14 +37,18 @@ namespace Client {
 		Failed
 	};
 	
+	struct NetworkMessage {
+		NetworkState state = Idle;
+		uint8_t* pImage = nullptr;
+	};
 
 	class ClientNetworking {
 		static bool quit;
-		NetworkState state = Idle;
+		NetworkMessage networkMessage;
+		ISteamNetworkingMessage* pIncomingMsg;
 		static ClientNetworking* s_pCallbackInstance;
 		ISteamNetworkingSockets* m_pInterface = nullptr;
 		HSteamNetConnection m_hConnection;
-		//HSteamListenSocket m_hListenSock;
 
 		std::map<HSteamNetConnection, std::string> m_mapClients;
 
@@ -54,14 +58,9 @@ namespace Client {
 		
 		bool connect(const SteamNetworkingIPAddr& serverAddr);
 
-		NetworkState run();
+		NetworkMessage run();
 
 		void closeConnection();
-
-		void reset() {
-
-			//m_pInterface->ResetIdentity();
-		}
 
 	private:
 

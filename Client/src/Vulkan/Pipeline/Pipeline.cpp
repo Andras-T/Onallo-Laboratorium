@@ -14,7 +14,7 @@ namespace Client {
 		this->compPath = compPath;
 	}
 
-	void Pipeline::init(VkDevice& device, std::optional<VkDescriptorSetLayout> descriptorSetLayout,
+	void Pipeline::init(VkDevice& device, VkDescriptorSetLayout& descriptorSetLayout,
 		VkRenderPass& renderPass,
 		VkVertexInputBindingDescription bindingDescription,
 		VkPrimitiveTopology topology,
@@ -23,9 +23,8 @@ namespace Client {
 		VkBool32 alphaBlendingEnable) {
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = stageConstants.descriptorSetLayoutCount;
-		if (pipelineLayoutInfo.setLayoutCount > 0 && descriptorSetLayout.has_value())
-			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout.value();
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = stageConstants.pushConstantsCount;
 		pipelineLayoutInfo.pPushConstantRanges = &stageConstants.pushConstantRange;
 

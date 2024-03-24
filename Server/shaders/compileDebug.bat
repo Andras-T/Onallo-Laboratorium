@@ -6,3 +6,4 @@ SET CURRENT_PATH=%~dp0
 xcopy /I /Y %CURRENT_PATH%*.spv %CURRENT_PATH%..\..\out\build\x64-Debug\Server\shaders
 xcopy /I /Y %CURRENT_PATH%*.spv %CURRENT_PATH%\compiled
 del %CURRENT_PATH%*.spv
+exit

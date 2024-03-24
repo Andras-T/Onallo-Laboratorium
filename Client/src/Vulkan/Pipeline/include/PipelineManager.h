@@ -15,7 +15,7 @@ namespace Client {
 
 	public:
 
-		void init(VkDevice& device, std::optional<VkDescriptorSetLayout> descriptorSetLayout, VkRenderPass& renderPass);
+		void init(VkDevice& device, VkDescriptorSetLayout& descriptorSetLayout, VkRenderPass& renderPass);
 
 		void cleanUp(VkDevice& device);
 

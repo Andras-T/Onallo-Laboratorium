@@ -34,7 +34,7 @@ namespace Server {
 		resourceManager.createFrameBuffers(swapChainManager.getSwapChainImageViews(), renderPass, device, swapChainManager.getSwapChainExtent());
 
 		descriptorManager.createDescriptorPool(device);
-		resourceManager.createBuffers(deviceManager, commandPoolManager.getCommandPool());
+		resourceManager.createBuffers(deviceManager, commandPoolManager.getCommandPool(), window.get_GLFW_Window());
 		descriptorManager.createDescriptorSets(device);
 		commandPoolManager.createCommandBuffers(device);
 
@@ -46,6 +46,7 @@ namespace Server {
 	}
 
 	void WindowedCore::mainLoop() {
+
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
 			glfwPollEvents();
@@ -53,14 +54,30 @@ namespace Server {
 			double currentTime = glfwGetTime();
 			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
 			Window::lastTime = currentTime;
+
+			{
+				std::unique_lock<std::mutex> imageLock(imageProcessing);
+				imageRendered = true;
+				cv.notify_one();
+			}
 		}
 	}
 
 	void WindowedCore::send() {
 		server.start(27020);
+		{
+			std::unique_lock<std::mutex> imageLock(imageProcessing);
+			cv.wait(imageLock, [this] {return imageRendered; });
+			imageRendered = false;
+		}
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
-			server.run();
+			networkMessage = server.run(resourceManager.getCPUpuImage(), resourceManager.getCPUImageSize());
+			{
+				std::unique_lock<std::mutex> imageLock(imageProcessing);
+				cv.wait(imageLock, [this] {return imageRendered; });
+				imageRendered = false;
+			}
 		}
 		server.closeConnetions();
 
@@ -105,7 +122,7 @@ namespace Server {
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+		//colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 

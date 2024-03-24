@@ -12,25 +12,35 @@ namespace Client {
 		logger->LogInfo("Init Client Core");
 
 		compileShaders();
+		
 		window.init("Onallo Laboratorium - Client");
+		
 		createInstance(enableValidationLayers);
 		setupDebugMessenger(enableValidationLayers);
-		createSurface(*window.get_GLFW_Window());
+		createSurface(window.get_GLFW_Window());
+		
 		deviceManager.init(instance, surface, enableValidationLayers);
+		auto& device = deviceManager.getLogicalDevice();
+		
 		swapChainManager.init(surface, renderPass, deviceManager, window.get_GLFW_Window());
+		
 		createRenderPass(swapChainManager.getSwapChainImageFormat());
-		descriptorManager.init();
-		pipelineManager.init(deviceManager.getLogicalDevice(), std::nullopt,
-			renderPass);
-		commandPoolManager.createCommandPool(deviceManager.getLogicalDevice(), deviceManager.getIndices());
-		//swapChainManager.createImages(deviceManager.getLogicalDevice(), deviceManager.getPhysicalDevice());
+		
 		swapChainManager.createFrameBuffers();
-		descriptorManager.createDescriptorPool(deviceManager.getLogicalDevice());
-		resourceManager.init(deviceManager, commandPoolManager.getCommandPool());
-		descriptorManager.createDescriptorSets(deviceManager.getLogicalDevice());
-		commandPoolManager.createCommandBuffers(deviceManager.getLogicalDevice());
-		commandPoolManager.createImGuiCommandBuffers(deviceManager.getLogicalDevice());
 
+		commandPoolManager.createCommandPool(device, deviceManager.getIndices());
+		commandPoolManager.createCommandBuffers(device);
+		commandPoolManager.createImGuiCommandBuffers(device);
+
+		resourceManager.createImageResources(deviceManager, commandPoolManager);
+		resourceManager.createBuffers(deviceManager, commandPoolManager.getCommandPool());
+		resourceManager.fillImageWithZeros(deviceManager, commandPoolManager);
+		
+		descriptorManager.initDescriptors(resourceManager, device);
+		descriptorManager.createDescriptors(device);
+
+		pipelineManager.init(device, descriptorManager[0].getDescriptorSetLayout(), renderPass);
+		
 		renderer = new Renderer(window, deviceManager, swapChainManager,
 			descriptorManager, pipelineManager, commandPoolManager, resourceManager, renderPass);
 		renderer->createSyncObjects();
@@ -38,6 +48,15 @@ namespace Client {
 
 		ClientNetworking::InitSteamDatagramConnectionSockets();
 	}
+
+	/* Validation Error: [ VUID-vkCmdDraw-None-08600 ] Object 0: handle = 0x967dd1000000000e, type = VK_OBJECT_TYPE_PIPELINE; |
+	MessageID = 0x4768cf39 | vkCmdDraw() : The VkPipeline 0x967dd1000000000e[](created with VkPipelineLayout
+		0xec4bec000000000b[]) statically uses descriptor set(index #0) which is not compatible with the currently bound descriptor
+		set's pipeline layout (VkPipelineLayout 0x0[]). The Vulkan spec states: For each set n that is statically used by a bound
+		shader, a descriptor set must have been bound to n at the same pipeline bind point, with a VkPipelineLayout that is
+		compatible for set n, with the VkPipelineLayout used to create the current VkPipeline or the VkDescriptorSetLayout array
+		used to create the current VkShaderEXT, as described in Pipeline Layout Compatibility
+		(https ://vulkan.lunarg.com/doc/view/1.3.275.0/windows/1.3-extensions/vkspec.html#VUID-vkCmdDraw-None-08600)*/
 
 	void Core::run() {
 
@@ -53,17 +72,24 @@ namespace Client {
 		addrServer.Clear();
 		addrServer.ParseString(uiInput.ip_address);
 		addrServer.m_port = DEFAULT_SERVER_PORT;
-		state = Connecting;
+		networkMessage.state = Connecting;
 		bool valid = client.connect(addrServer);
 		// TODO: store the data in an array
-		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && valid && state != Failed && !uiInput.disconnect)
+		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && valid && networkMessage.state != Failed && !uiInput.disconnect)
 		{
-			state = client.run();
+			networkMessage = client.run();
+			{
+				std::unique_lock<std::mutex> imageLock(m);
+				recieved = true;
+				cv.notify_one();
+				cv.wait(imageLock, [this] {return imageRendered; });
+				imageRendered = false;
+			}
 		}
 
 		client.closeConnection();
 
-		if (state == Failed)
+		if (networkMessage.state == Failed)
 			logger->LogError("Reciever loop stopped due to network issues!");
 
 		logger->LogInfo("Thread is stopping", "[enginge - reciever]");
@@ -104,33 +130,48 @@ namespace Client {
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
 			glfwPollEvents();
-			renderer->drawFrame(lastFrameTime, uiInput);
-			double currentTime = glfwGetTime();
-			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
-			Window::lastTime = currentTime;
 
-			if (state == Failed)
+			if (networkMessage.state == Failed)
 			{
 				if (reciever.joinable())
 					reciever.join();
-				state = Idle;
+				networkMessage.state = Idle;
 			}
 
-			if (state == Connected)
+			if (networkMessage.state == Connected) {
 				uiInput.connected = true;
+				std::unique_lock<std::mutex> imageLock(m);
+				cv.wait(imageLock, [this] {return recieved; });
+				recieved = false;
+			}
+			else
+			{
+				networkMessage.pImage = nullptr;
+			}
 
 			if (uiInput.disconnect) {
 				if (reciever.joinable())
 					reciever.join();
-				state = Idle;
+				networkMessage.state = Idle;
 				uiInput.disconnect = false;
 				uiInput.connected = false;
 			}
 
-			if (uiInput.tryToConnect && state != Connected && state != Connecting) {
+			if (uiInput.tryToConnect && networkMessage.state != Connected && networkMessage.state != Connecting) {
 				reciever = std::thread{ &Core::recieve, this };
 				logger->LogInfo(std::format("Given ip address: {}", uiInput.ip_address));
 				uiInput.tryToConnect = false;
+			}
+
+			renderer->drawFrame(lastFrameTime, uiInput, networkMessage.pImage);
+			double currentTime = glfwGetTime();
+			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
+			Window::lastTime = currentTime;
+
+			{
+				std::unique_lock<std::mutex> imageLock(m);
+				imageRendered = true;
+				cv.notify_one();
 			}
 		}
 	}
@@ -326,8 +367,8 @@ namespace Client {
 		return extensions;
 	}
 
-	void Core::createSurface(GLFWwindow& window) {
-		if (glfwCreateWindowSurface(instance, &window, nullptr, &surface) !=
+	void Core::createSurface(GLFWwindow* window) {
+		if (glfwCreateWindowSurface(instance, window, nullptr, &surface) !=
 			VK_SUCCESS) {
 			throw std::runtime_error("Failed to create window surface!");
 		}
@@ -386,7 +427,7 @@ namespace Client {
 		init_info.PhysicalDevice = deviceManager.getPhysicalDevice();
 		init_info.QueueFamily = deviceManager.getQueueFamily();
 		init_info.Queue = deviceManager.getGraphicsQueue();
-		init_info.DescriptorPool = descriptorManager.getDescriptor("ImGui").value().getDescriptorPool();
+		init_info.DescriptorPool = descriptorManager[0].getDescriptorPool();
 		init_info.MinImageCount = swapChainManager.getMinImageCount();
 		init_info.ImageCount = swapChainManager.getSwapchainImageCount();
 		init_info.Subpass = 0;

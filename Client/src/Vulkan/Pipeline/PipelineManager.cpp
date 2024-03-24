@@ -6,7 +6,7 @@
 
 namespace Client {
 
-	void PipelineManager::init(VkDevice& device, std::optional<VkDescriptorSetLayout> descriptorSetLayout, VkRenderPass& renderPass)
+	void PipelineManager::init(VkDevice& device, VkDescriptorSetLayout& descriptorSetLayout, VkRenderPass& renderPass)
 	{
 		pipeline.setShaderPaths(vertPath, fragPath, std::optional<std::string>(std::nullopt));
 

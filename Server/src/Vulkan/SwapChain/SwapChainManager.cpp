@@ -45,7 +45,7 @@ namespace Server {
 		createInfo.imageColorSpace = surfaceFormat.colorSpace;
 		createInfo.imageExtent = extent;
 		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
 		uint32_t queueFamilyIndices[] = { indices.graphicsAndComputeFamily.value(),
 																 indices.presentFamily.value() };
@@ -149,11 +149,10 @@ namespace Server {
 		return swapChainSupportDetails;
 	}
 
-	// TODO: change format to the correct one!!!
 	VkSurfaceFormatKHR SwapChainManager::chooseSwapSurfaceFormat(
 		const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == VK_FORMAT_R8G8B8_UNORM &&
+			if (availableFormat.format == defaultFormat &&
 				availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 				return availableFormat;
 			}

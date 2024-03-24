@@ -85,7 +85,7 @@ namespace Client {
 		vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 	}
 
-	void CommandPoolManager::transitionImageLayout(VkDevice& device, VkImage image, VkFormat format,
+	void CommandPoolManager::transitionImageLayout(VkDevice& device, VkImage& image, VkFormat format,
 		VkImageLayout oldLayout, VkImageLayout newLayout, VkQueue& graphicsQueue, uint32_t layerCount)
 	{
 		VkCommandBuffer commandBuffer = beginSingleTimeCommands(device);
@@ -107,12 +107,12 @@ namespace Client {
 		VkPipelineStageFlags destinationStage;
 
 		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-			newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			newLayout == VK_IMAGE_LAYOUT_GENERAL) {
 			barrier.srcAccessMask = 0;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
+			barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
 			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			destinationStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			Logger::getInstance().LogInfo("Transitioning image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_GENERAL");
 		} else {
 			throw std::invalid_argument("Unsupported layout transition!");
 		}

@@ -6,7 +6,6 @@
 #include <array>
 #include <algorithm>
 
-#include "Images.h"
 #include <Vulkan/Utils/Constants.h>
 #include <Vulkan/DeviceManager/include/DeviceManager.h>
 
@@ -18,7 +17,6 @@ namespace Client {
 		VkExtent2D swapChainExtent;
 		SwapChainSupportDetails swapChainSupportDetails;
 
-		//Images images;
 		std::vector<VkImage> swapChainImages;
 		std::vector<VkImageView> swapChainImageViews;
 

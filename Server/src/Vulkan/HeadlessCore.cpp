@@ -33,7 +33,7 @@ namespace Server {
 		resourceManager.createFrameBuffers(resourceManager.getPresentImages().getImageViews(), renderPass, device, std::nullopt);
 
 		descriptorManager.createDescriptorPool(device);
-		resourceManager.createBuffers(deviceManager, commandPoolManager.getCommandPool());
+		resourceManager.createBuffers(deviceManager, commandPoolManager.getCommandPool(), std::nullopt);
 		descriptorManager.createDescriptorSets(device);
 		commandPoolManager.createCommandBuffers(device);
 

@@ -6,7 +6,6 @@ struct StageConstants {
     std::string name = "Default";
     VkPushConstantRange pushConstantRange = {};
     uint32_t pushConstantsCount = 0;
-    uint32_t descriptorSetLayoutCount = 0;
 
     void setPushContantRange(VkShaderStageFlagBits stageFlagBits, uint32_t offset, uint32_t size) {
     pushConstantRange.stageFlags = stageFlagBits;

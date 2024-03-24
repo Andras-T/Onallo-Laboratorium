@@ -32,7 +32,7 @@ namespace Client {
 		void setShaderPaths(std::optional<std::string> vertPath, std::optional<std::string> fragPath,
 			std::optional<std::string> compPath);
 
-		void init(VkDevice& device, std::optional<VkDescriptorSetLayout> descriptorSetLayout,
+		void init(VkDevice& device, VkDescriptorSetLayout& descriptorSetLayout,
 			VkRenderPass& renderPass,
 			VkVertexInputBindingDescription bindingDescription,
 			VkPrimitiveTopology topology,

@@ -50,7 +50,7 @@ namespace Client {
 		case k_ESteamNetworkingConnectionState_ClosedByPeer:
 		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
 		{
-			state = Failed;
+			networkMessage.state = Failed;
 
 			// Print an appropriate message
 			if (pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting)
@@ -81,13 +81,13 @@ namespace Client {
 		}
 
 		case k_ESteamNetworkingConnectionState_Connecting:
-			state = Connecting;
+			networkMessage.state = Connecting;
 			// We will get this callback when we start connecting.
 			// We can ignore this.
 			break;
 
 		case k_ESteamNetworkingConnectionState_Connected:
-			state = Connected;
+			networkMessage.state = Connected;
 			Logger::getInstance().LogInfo("OnSteamNetConnectionStatusChanged: Connected to server OK");
 			break;
 
@@ -98,7 +98,7 @@ namespace Client {
 	}
 
 	bool ClientNetworking::connect(const SteamNetworkingIPAddr& serverAddr) {
-		
+
 		m_pInterface = SteamNetworkingSockets();
 
 		// Start connecting
@@ -117,26 +117,28 @@ namespace Client {
 		return true;
 	}
 
-	NetworkState ClientNetworking::run() {
+	NetworkMessage ClientNetworking::run() {
 		PollIncomingMessages();
 		PollConnectionStateChanges();
-		std::this_thread::sleep_for(std::chrono::milliseconds(25));
-		return state;
+		//std::this_thread::sleep_for(std::chrono::milliseconds(25));
+		return networkMessage;
 	}
 
 	void ClientNetworking::PollIncomingMessages() {
 		while (!quit)
 		{
-			ISteamNetworkingMessage* pIncomingMsg = nullptr;
-			int numMsgs = m_pInterface->ReceiveMessagesOnConnection(m_hConnection, &pIncomingMsg, 1);
-			if (numMsgs == 0)
+			int numMsgs = m_pInterface->ReceiveMessagesOnConnection(m_hConnection, &pIncomingMsg, 100);
+			if (numMsgs > 0) {
+				//pIncomingMsg->Release();
+				Logger::getInstance().LogInfo("Got  messages");
+				networkMessage.pImage = static_cast<uint8_t*>(pIncomingMsg->m_pData);
+			}
+			else if (numMsgs == 0) {
 				break;
-			if (numMsgs < 0)
+			}
+			else {
 				Logger::getInstance().LogError("Error checking for messages");
-
-			char* char_ptr = static_cast<char*>(pIncomingMsg->m_pData);
-			std::string str(char_ptr, pIncomingMsg->m_cbSize);
-			Logger::getInstance().LogInfo(str);
+			}
 		}
 	}
 

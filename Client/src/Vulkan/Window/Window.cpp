@@ -2,6 +2,7 @@
 #include "stb_image.h"
 #include <filesystem>
 #include "Logger.h"
+#include <Vulkan/Utils/Constants.h>
 
 namespace Client {
 
@@ -19,10 +20,7 @@ namespace Client {
 			stbi_load(normalizedPath.c_str(), &icon.width, &icon.height, 0, 0);
 
 		if (icon.pixels != nullptr) {
-			GLFWimage images[1];
-			images[0] = icon;
-
-			glfwSetWindowIcon(window, 1, images);
+			glfwSetWindowIcon(window, 1, &icon);
 		}
 		else {
 			Logger::getInstance().LogError("Failed to load icon!");
@@ -33,12 +31,14 @@ namespace Client {
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+		glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
 
 		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 
 		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
-		window = glfwCreateWindow(mode->width, mode->height,
+		window = glfwCreateWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT,
 			title.data(), nullptr, nullptr);
 
 		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
@@ -46,11 +46,8 @@ namespace Client {
 		int xpos, ypos, width, height;
 		glfwGetMonitorWorkarea(primaryMonitor, &xpos, &ypos, &width, &height);
 
-		glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
-		glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
-
 		glfwSetWindowMonitor(window, nullptr, xpos + 50, ypos + 50,
-			1920, 1080,
+			DEFAULT_WIDTH, DEFAULT_HEIGHT,
 			mode->refreshRate);
 
 		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
@@ -76,17 +73,12 @@ namespace Client {
 		}
 		else {
 			glfwSetWindowMonitor(window, nullptr, xpos + 50, ypos + 50,
-				1920, 1080,
+				DEFAULT_WIDTH, DEFAULT_HEIGHT,
 				mode->refreshRate);
 		}
 
-		GLFWimage images[1];
-		images[0] = icon;
-		if (images != nullptr)
-			glfwSetWindowIcon(window, 1, images);
-
-		// TODO: change it to
-		//    glfwSetWindowIcon(window, 1, &icon);
+		if (icon.pixels != nullptr)
+			glfwSetWindowIcon(window, 1, &icon);
 
 		fullScreen = !fullScreen;
 	}

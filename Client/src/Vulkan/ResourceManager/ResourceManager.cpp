@@ -3,11 +3,19 @@
 
 namespace Client {
 
-    void ResourceManager::init(DeviceManager& deviceManager, VkCommandPool& commandPool)
+    void ResourceManager::createBuffers(DeviceManager& deviceManager, VkCommandPool& commandPool)
     {
         createVertexBuffer(deviceManager, commandPool, Quad::quadVertices.data(),
             quadBuffer, quadMemory,
             Quad::quadVertices.size() * sizeof(float));
+        
+        uint32_t pixelSize = 4;
+        VkDeviceSize size = pixelSize * static_cast<uint32_t>(DEFAULT_IMAGE_WIDTH) * static_cast<uint32_t>(DEFAULT_IMAGE_HEIGHT);
+        createBuffer(deviceManager, size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory);
     }
 
     void ResourceManager::createVertexBuffer(DeviceManager& deviceManager,
