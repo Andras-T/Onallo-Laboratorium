@@ -1,5 +1,6 @@
 #include "include/ServerNetworking.h"
 #include <thread>
+#include <array>
 
 namespace Server {
 
@@ -39,9 +40,10 @@ namespace Server {
 		serverLocalAddr.Clear();
 		serverLocalAddr.m_port = nPort;
 
-		SteamNetworkingConfigValue_t opt;
-		opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)SteamNetConnectionStatusChangedCallback);
-		m_hListenSock = m_pInterface->CreateListenSocketIP(serverLocalAddr, 1, &opt);
+		std::array<SteamNetworkingConfigValue_t, 2> opts;
+		opts[0].SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)SteamNetConnectionStatusChangedCallback);
+		opts[1].SetInt32(k_ESteamNetworkingConfig_SendBufferSize, 524288 * 100);
+		m_hListenSock = m_pInterface->CreateListenSocketIP(serverLocalAddr, 2, opts.data());
 
 		if (m_hListenSock == k_HSteamListenSocket_Invalid)
 			Logger::getInstance().LogError("Failed to listen on port " + std::to_string(nPort));
@@ -58,12 +60,13 @@ namespace Server {
 		PollConnectionStateChanges();
 
 		if (networkMessage.state == Connected)
-			SendMessageToAllClients(imgage, size, Unreliable);
+			SendMessageToAllClients(imgage, size, Reliable);//k_nSteamNetworkingSend_UseCurrentThread
 
 		return networkMessage;
 	}
 
 	void ServerNetworking::closeConnetions() {
+		//CSteamNetworkConnectionBase::Think
 		// Close all the connections
 		Logger::getInstance().LogInfo("Closing connections...\n");
 		//SendMessageToAllClients("Goodbye!", sizeof(char) * 9, Unreliable);
@@ -86,11 +89,25 @@ namespace Server {
 		m_hPollGroup = k_HSteamNetPollGroup_Invalid;
 	}
 
+	//void freeMsg(SteamNetworkingMessage_t* pMsg) {
+	//	delete[]
+	//}
+
 	void ServerNetworking::SendMessageToAllClients(const void* data, uint32 size, MessageFlags flag) {
 		//Logger::getInstance().LogInfo(std::format("Sending {} bytes", size));
 		for (auto& [connection, name] : m_mapClients)
 		{
-			m_pInterface->SendMessageToConnection(connection, data, size, flag, nullptr);
+			//auto result = m_pInterface->SendMessageToConnection(connection, data, size, flag, nullptr);
+			Logger::getInstance().LogInfo(std::format("Sending message with {} bytes", size));
+
+			SteamNetworkingMessage_t* pMessage = SteamNetworkingUtils()->AllocateMessage(size);
+			pMessage->m_conn = connection;
+			pMessage->m_nFlags = flag;
+			//pMessage->m_cbSize = size;
+			memcpy(pMessage->m_pData, data, size);
+			m_pInterface->SendMessages(1, &pMessage, nullptr);
+			m_pInterface->FlushMessagesOnConnection(connection);
+			PrintConnectionStatus(connection);
 		}
 	}
 
@@ -199,6 +216,7 @@ namespace Server {
 				Logger::getInstance().LogInfo("Can't accept connection.  (It was already closed?)");
 				break;
 			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 			// Assign the poll group
 			if (!m_pInterface->SetConnectionPollGroup(pInfo->m_hConn, m_hPollGroup))
@@ -224,5 +242,12 @@ namespace Server {
 			// Silences -Wswitch
 			break;
 		}
+	}
+	void ServerNetworking::PrintConnectionStatus(HSteamNetConnection connection)
+	{
+		SteamNetConnectionRealTimeStatus_t pStatus;
+		m_pInterface->GetConnectionRealTimeStatus(connection, &pStatus, 0, nullptr);
+		Logger::getInstance().LogInfo(std::format("SentUnacked: {} m_cbPendingUnreliable, ping: {} ms, quality: {}, pending: rel {} bytes, unrel {} bytes, queuetime: {} bytes",
+			pStatus.m_cbSentUnackedReliable, pStatus.m_nPing, pStatus.m_flConnectionQualityRemote, pStatus.m_cbPendingReliable, pStatus.m_cbPendingUnreliable, pStatus.m_usecQueueTime));
 	}
 }

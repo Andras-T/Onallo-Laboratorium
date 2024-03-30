@@ -49,6 +49,7 @@ namespace Server {
 
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
+			//std::this_thread::sleep_for(std::chrono::milliseconds(2));
 			glfwPollEvents();
 			renderer->drawFrame(lastFrameTime);
 			double currentTime = glfwGetTime();
@@ -72,6 +73,7 @@ namespace Server {
 		}
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
+			//std::this_thread::sleep_for(std::chrono::milliseconds(2));
 			networkMessage = server.run(resourceManager.getCPUpuImage(), resourceManager.getCPUImageSize());
 			{
 				std::unique_lock<std::mutex> imageLock(imageProcessing);

@@ -42,9 +42,21 @@ namespace Client {
 			ImGui::InputText("IP Address", uiInput.ip_address, IM_ARRAYSIZE(uiInput.ip_address));
 			ImGui::PopItemWidth();
 
+			bool disable = uiInput.tryToConnect;
+			if (disable)
+			{
+				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+			}
+
 			if (ImGui::Button("Connect"))
 				uiInput.tryToConnect = true;
 
+			if (disable)
+			{
+				ImGui::PopItemFlag();
+				ImGui::PopStyleVar();
+			}
 		}
 		else {
 			if (ImGui::Button("Disconnect"))

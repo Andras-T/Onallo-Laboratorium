@@ -89,6 +89,8 @@ namespace Server {
 
 		static void SteamNetConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* pInfo);
 		void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo);
+
+		void PrintConnectionStatus(HSteamNetConnection connection);
 	};
 
 }

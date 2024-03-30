@@ -3,7 +3,7 @@
 #endif
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
+const bool enableValidationLayers = true;
 #else
 const bool enableValidationLayers = true;
 #endif
@@ -40,7 +40,7 @@ namespace Client {
 		Renderer* renderer;
 
 		Input uiInput;
-		NetworkMessage networkMessage;
+		NetworkUtils networkUtils;
 		ClientNetworking client;
 
 		VkInstance instance;
@@ -60,6 +60,8 @@ namespace Client {
 		bool recieved = false;
 
 	public:
+
+		Core() :client(networkUtils) {}
 
 		void init();
 

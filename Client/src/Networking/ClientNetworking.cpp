@@ -1,5 +1,6 @@
 #include "include/ClientNetworking.h"
 #include <thread>
+#include <array>
 
 namespace Client {
 
@@ -7,7 +8,8 @@ namespace Client {
 	SteamNetworkingMicroseconds g_logTimeZero;
 	ClientNetworking* ClientNetworking::s_pCallbackInstance = nullptr;
 
-	void ClientNetworking::InitSteamDatagramConnectionSockets() {
+	void ClientNetworking::init()
+	{
 		SteamDatagramErrMsg errMsg;
 		if (!GameNetworkingSockets_Init(nullptr, errMsg))
 			Logger::getInstance().LogError(std::format("GameNetworkingSockets_Init failed. {}", errMsg));
@@ -38,66 +40,77 @@ namespace Client {
 
 	void ClientNetworking::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo)
 	{
-		//assert(pInfo->m_hConn == m_hConnection || m_hConnection == k_HSteamNetConnection_Invalid);
-
-		// What's the state of the connection?
-		switch (pInfo->m_info.m_eState)
+		Logger::getInstance().LogInfo(std::format("m_hConnection: {}", uint32_t(m_hConnection)));
+		Logger::getInstance().LogInfo(std::format("pInfo->m_hConn: {}", uint32_t(pInfo->m_hConn)));
+		if (pInfo->m_hConn == m_hConnection || m_hConnection == k_HSteamNetConnection_Invalid)
 		{
-		case k_ESteamNetworkingConnectionState_None:
-			// NOTE: We will get callbacks here when we destroy connections.  You can ignore these.
-			break;
 
-		case k_ESteamNetworkingConnectionState_ClosedByPeer:
-		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
-		{
-			networkMessage.state = Failed;
+			// What's the state of the connection?
+			switch (pInfo->m_info.m_eState)
+			{
+			case k_ESteamNetworkingConnectionState_None:
+				// NOTE: We will get callbacks here when we destroy connections.  You can ignore these.
+				break;
 
-			// Print an appropriate message
-			if (pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting)
+			case k_ESteamNetworkingConnectionState_ClosedByPeer:
+			case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
 			{
-				// Note: we could distinguish between a timeout, a rejected connection,
-				// or some other transport problem.
-				Logger::getInstance().LogInfo(std::format("We sought the remote host, yet our efforts were met with defeat. {}", pInfo->m_info.m_szEndDebug));
-			}
-			else if (pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
-			{
-				Logger::getInstance().LogInfo(std::format("Alas, troubles beset us; we have lost contact with the host. {}", pInfo->m_info.m_szEndDebug));
-			}
-			else
-			{
-				// NOTE: We could check the reason code for a normal disconnection
-				Logger::getInstance().LogInfo(std::format("The host hath bidden us farewell. {}", pInfo->m_info.m_szEndDebug));
+				networkUtils.state = Failed;
+
+				// Print an appropriate message
+				if (pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting)
+				{
+					// Note: we could distinguish between a timeout, a rejected connection,
+					// or some other transport problem.
+					Logger::getInstance().LogInfo(std::format("We sought the remote host, yet our efforts were met with defeat. {}", pInfo->m_info.m_szEndDebug));
+				}
+				else if (pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
+				{
+					Logger::getInstance().LogInfo(std::format("Alas, troubles beset us; we have lost contact with the host. {}", pInfo->m_info.m_szEndDebug));
+				}
+				else
+				{
+					// NOTE: We could check the reason code for a normal disconnection
+					Logger::getInstance().LogInfo(std::format("The host hath bidden us farewell. {}", pInfo->m_info.m_szEndDebug));
+				}
+
+				// Clean up the connection.  This is important!
+				// The connection is "closed" in the network sense, but
+				// it has not been destroyed.  We must close it on our end, too
+				// to finish up.  The reason information do not matter in this case,
+				// and we cannot linger because it's already closed on the other end,
+				// so we just pass 0's.
+				m_pInterface->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
+				m_hConnection = k_HSteamNetConnection_Invalid;
+				break;
 			}
 
-			// Clean up the connection.  This is important!
-			// The connection is "closed" in the network sense, but
-			// it has not been destroyed.  We must close it on our end, too
-			// to finish up.  The reason information do not matter in this case,
-			// and we cannot linger because it's already closed on the other end,
-			// so we just pass 0's.
-			m_pInterface->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
-			m_hConnection = k_HSteamNetConnection_Invalid;
-			break;
+			case k_ESteamNetworkingConnectionState_Connecting:
+				networkUtils.state = Connecting;
+				// We will get this callback when we start connecting.
+				// We can ignore this.
+				break;
+
+			case k_ESteamNetworkingConnectionState_Connected:
+				networkUtils.state = Connected;
+				Logger::getInstance().LogInfo("OnSteamNetConnectionStatusChanged: Connected to server OK");
+				break;
+
+			default:
+				// Silences -Wswitch
+				break;
+			}
 		}
-
-		case k_ESteamNetworkingConnectionState_Connecting:
-			networkMessage.state = Connecting;
-			// We will get this callback when we start connecting.
-			// We can ignore this.
-			break;
-
-		case k_ESteamNetworkingConnectionState_Connected:
-			networkMessage.state = Connected;
-			Logger::getInstance().LogInfo("OnSteamNetConnectionStatusChanged: Connected to server OK");
-			break;
-
-		default:
-			// Silences -Wswitch
-			break;
+		else {
+			Logger::getInstance().LogWarning(std::format("Invalid Connection handle with ESteamNetworkingConnectionState: {}", int(pInfo->m_info.m_eState)));
 		}
 	}
 
-	bool ClientNetworking::connect(const SteamNetworkingIPAddr& serverAddr) {
+	void ClientNetworking::connect(const NetworkAddress& address) {
+		SteamNetworkingIPAddr serverAddr;
+		serverAddr.Clear();
+		serverAddr.ParseString(address.address);
+		serverAddr.m_port = address.port;
 
 		m_pInterface = SteamNetworkingSockets();
 
@@ -105,33 +118,44 @@ namespace Client {
 		char szAddr[SteamNetworkingIPAddr::k_cchMaxString];
 		serverAddr.ToString(szAddr, sizeof(szAddr), true);
 		Logger::getInstance().LogInfo(std::format("Connecting to server at: {}", szAddr));
-		SteamNetworkingConfigValue_t opt;
-		opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)SteamNetConnectionStatusChangedCallback);
-		m_hConnection = m_pInterface->ConnectByIPAddress(serverAddr, 1, &opt);
+		constexpr int NOPTS = 4;
+		std::array<SteamNetworkingConfigValue_t, NOPTS> opts;
+		opts[0].SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)SteamNetConnectionStatusChangedCallback);
+		opts[1].SetInt32(k_ESteamNetworkingConfig_TimeoutInitial, 5000);
+		opts[2].SetInt32(k_ESteamNetworkingConfig_TimeoutConnected, 6000);
+		opts[3].SetInt32(k_ESteamNetworkingConfig_Unencrypted, 2);
+
+		m_hConnection = m_pInterface->ConnectByIPAddress(serverAddr, NOPTS, opts.data());
+
 		if (m_hConnection == k_HSteamNetConnection_Invalid) {
 			Logger::getInstance().LogError("Failed to create connection");
-			return false;
+			return;
 		}
-		Logger::getInstance().LogInfo("m_hConnection: " + std::to_string(m_hConnection));
+		Logger::getInstance().LogInfo(std::format("m_hConnection: {}", uint32_t(m_hConnection)));
 		PollConnectionStateChanges();
-		return true;
+		pIncomingMsg = new SteamNetworkingMessage_t * [10];// pMessage = SteamNetworkingUtils()->AllocateMessage(size);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		PollConnectionStateChanges();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-	NetworkMessage ClientNetworking::run() {
-		PollIncomingMessages();
+	NetworkUtils ClientNetworking::run(size_t i) {
+		if (networkUtils.state == Connected)
+			PollIncomingMessages();
+
 		PollConnectionStateChanges();
-		//std::this_thread::sleep_for(std::chrono::milliseconds(25));
-		return networkMessage;
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		return networkUtils;
 	}
 
-	void ClientNetworking::PollIncomingMessages() {
+	void ClientNetworking::PollIncomingMessages(size_t i) {
 		while (!quit)
 		{
-			int numMsgs = m_pInterface->ReceiveMessagesOnConnection(m_hConnection, &pIncomingMsg, 100);
+			int numMsgs = m_pInterface->ReceiveMessagesOnConnection(m_hConnection, pIncomingMsg, 1);
 			if (numMsgs > 0) {
-				//pIncomingMsg->Release();
-				Logger::getInstance().LogInfo("Got  messages");
-				networkMessage.pImage = static_cast<uint8_t*>(pIncomingMsg->m_pData);
+				Logger::getInstance().LogInfo(std::format("Got  messages: {}", numMsgs));
+				memcpy(networkUtils.pImage[i], pIncomingMsg[0]->m_pData, pIncomingMsg[0]->m_cbSize);
+				pIncomingMsg[0]->Release();
 			}
 			else if (numMsgs == 0) {
 				break;
@@ -151,5 +175,6 @@ namespace Client {
 	void ClientNetworking::closeConnection() {
 		Logger::getInstance().LogInfo("Disconnecting from server");
 		m_pInterface->CloseConnection(m_hConnection, 0, "Goodbye", true);
+		delete[] pIncomingMsg;
 	}
 }

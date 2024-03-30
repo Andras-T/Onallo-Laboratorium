@@ -54,7 +54,7 @@ namespace Server {
 			vkFreeMemory(device, stagingBufferMemory, nullptr);
 		}
 
-		uint8_t* getCPUpuImage() {
+		inline uint8_t* getCPUpuImage() {
 			return cpuImage;
 		}
 
@@ -66,7 +66,7 @@ namespace Server {
 			return presentImages;
 		}
 
-		VkDeviceSize getCPUImageSize() { return size; }
+		inline VkDeviceSize getCPUImageSize() { return size; }
 
 	private:
 

@@ -46,17 +46,8 @@ namespace Client {
 		renderer->createSyncObjects();
 		initImGui();
 
-		ClientNetworking::InitSteamDatagramConnectionSockets();
+		client.init();
 	}
-
-	/* Validation Error: [ VUID-vkCmdDraw-None-08600 ] Object 0: handle = 0x967dd1000000000e, type = VK_OBJECT_TYPE_PIPELINE; |
-	MessageID = 0x4768cf39 | vkCmdDraw() : The VkPipeline 0x967dd1000000000e[](created with VkPipelineLayout
-		0xec4bec000000000b[]) statically uses descriptor set(index #0) which is not compatible with the currently bound descriptor
-		set's pipeline layout (VkPipelineLayout 0x0[]). The Vulkan spec states: For each set n that is statically used by a bound
-		shader, a descriptor set must have been bound to n at the same pipeline bind point, with a VkPipelineLayout that is
-		compatible for set n, with the VkPipelineLayout used to create the current VkPipeline or the VkDescriptorSetLayout array
-		used to create the current VkShaderEXT, as described in Pipeline Layout Compatibility
-		(https ://vulkan.lunarg.com/doc/view/1.3.275.0/windows/1.3-extensions/vkspec.html#VUID-vkCmdDraw-None-08600)*/
 
 	void Core::run() {
 
@@ -67,32 +58,29 @@ namespace Client {
 	}
 
 	void Core::recieve() {
+		NetworkAddress serverAddress;
+		serverAddress.address = uiInput.ip_address;
+		serverAddress.port = DEFAULT_SERVER_PORT;
+		networkUtils = client.connect(serverAddress);
 
-		SteamNetworkingIPAddr addrServer;
-		addrServer.Clear();
-		addrServer.ParseString(uiInput.ip_address);
-		addrServer.m_port = DEFAULT_SERVER_PORT;
-		networkMessage.state = Connecting;
-		bool valid = client.connect(addrServer);
-		// TODO: store the data in an array
-		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && valid && networkMessage.state != Failed && !uiInput.disconnect)
+		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && networkUtils.state != Failed && !uiInput.disconnect)
 		{
-			networkMessage = client.run();
+			networkUtils = client.run();
 			{
 				std::unique_lock<std::mutex> imageLock(m);
 				recieved = true;
 				cv.notify_one();
-				cv.wait(imageLock, [this] {return imageRendered; });
+				cv.wait(imageLock, [this] {return imageRendered || uiInput.disconnect; });
 				imageRendered = false;
 			}
 		}
 
 		client.closeConnection();
 
-		if (networkMessage.state == Failed)
+		if (networkUtils.state == Failed)
 			logger->LogError("Reciever loop stopped due to network issues!");
 
-		logger->LogInfo("Thread is stopping", "[enginge - reciever]");
+		logger->LogInfo(std::format("Thread #{} is stopping! Current state: {}", std::this_thread::get_id(), int(networkUtils.state)));
 	}
 
 	void Core::cleanUp()
@@ -131,39 +119,44 @@ namespace Client {
 		{
 			glfwPollEvents();
 
-			if (networkMessage.state == Failed)
-			{
-				if (reciever.joinable())
-					reciever.join();
-				networkMessage.state = Idle;
-			}
-
-			if (networkMessage.state == Connected) {
+			if (networkUtils.state == Connected) {
 				uiInput.connected = true;
+				uiInput.tryToConnect = false;
 				std::unique_lock<std::mutex> imageLock(m);
-				cv.wait(imageLock, [this] {return recieved; });
+				cv.wait(imageLock, [this] {return recieved || networkUtils.state == Failed || networkUtils.state == Idle || uiInput.disconnect; });
 				recieved = false;
 			}
 			else
 			{
-				networkMessage.pImage = nullptr;
+				networkUtils.pImage = nullptr;
+				uiInput.connected = false;
+
+				if (networkUtils.state == Failed)
+				{
+					uiInput.tryToConnect = false;
+					if (reciever.joinable())
+						reciever.join();
+					networkUtils.state = Idle;
+				}
 			}
 
 			if (uiInput.disconnect) {
 				if (reciever.joinable())
 					reciever.join();
-				networkMessage.state = Idle;
+				networkUtils.state = Idle;
 				uiInput.disconnect = false;
 				uiInput.connected = false;
-			}
-
-			if (uiInput.tryToConnect && networkMessage.state != Connected && networkMessage.state != Connecting) {
-				reciever = std::thread{ &Core::recieve, this };
-				logger->LogInfo(std::format("Given ip address: {}", uiInput.ip_address));
 				uiInput.tryToConnect = false;
 			}
 
-			renderer->drawFrame(lastFrameTime, uiInput, networkMessage.pImage);
+			if (uiInput.tryToConnect && networkUtils.state != Connected && networkUtils.state != Connecting) {
+				networkUtils.state = Connecting;
+				reciever = std::thread{ &Core::recieve, this };
+				logger->LogInfo(std::format("Given ip address: {}", uiInput.ip_address));
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
+
+			renderer->drawFrame(lastFrameTime, uiInput, networkUtils.pImage);
 			double currentTime = glfwGetTime();
 			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
 			Window::lastTime = currentTime;
@@ -174,6 +167,9 @@ namespace Client {
 				cv.notify_one();
 			}
 		}
+
+		if (reciever.joinable())
+			reciever.join();
 	}
 
 	void Core::compileShaders() {

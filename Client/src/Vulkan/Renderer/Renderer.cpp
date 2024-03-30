@@ -36,7 +36,7 @@ namespace Client {
 		}
 	}
 
-	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t* pImage)
+	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t** pImage)
 	{
 		auto& device = deviceManager.getLogicalDevice();
 

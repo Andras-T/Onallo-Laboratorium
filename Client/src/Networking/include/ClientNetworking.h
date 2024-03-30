@@ -17,6 +17,7 @@
 #include <cassert>
 
 #include <Logger.h>
+#include "INetworking.h"
 
 namespace Client {
 
@@ -30,22 +31,10 @@ namespace Client {
 #endif
 	}
 
-	enum NetworkState {
-		Idle,
-		Connecting,
-		Connected,
-		Failed
-	};
-	
-	struct NetworkMessage {
-		NetworkState state = Idle;
-		uint8_t* pImage = nullptr;
-	};
-
-	class ClientNetworking {
+	class ClientNetworking : public INetworking {
 		static bool quit;
-		NetworkMessage networkMessage;
-		ISteamNetworkingMessage* pIncomingMsg;
+		NetworkUtils networkUtils;
+		ISteamNetworkingMessage** pIncomingMsg;
 		static ClientNetworking* s_pCallbackInstance;
 		ISteamNetworkingSockets* m_pInterface = nullptr;
 		HSteamNetConnection m_hConnection;
@@ -54,13 +43,15 @@ namespace Client {
 
 	public:
 
-		static void InitSteamDatagramConnectionSockets();
+		ClientNetworking(NetworkUtils& n) :networkUtils(n) {}
+
+		void init() override;
 		
-		bool connect(const SteamNetworkingIPAddr& serverAddr);
+		void connect(const NetworkAddress& address) override;
 
-		NetworkMessage run();
+		void run(size_t i) override;
 
-		void closeConnection();
+		void closeConnection() override;
 
 	private:
 
@@ -70,7 +61,7 @@ namespace Client {
 
 		void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo);
 
-		void PollIncomingMessages();
+		void PollIncomingMessages(size_t i);
 
 		void PollConnectionStateChanges();
 	};
