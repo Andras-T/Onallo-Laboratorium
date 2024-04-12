@@ -1,6 +1,7 @@
 #include "include/ClientNetworking.h"
 #include <thread>
 #include <array>
+#include <Vulkan/Utils/Constants.h>
 
 namespace Client {
 
@@ -8,7 +9,7 @@ namespace Client {
 	SteamNetworkingMicroseconds g_logTimeZero;
 	ClientNetworking* ClientNetworking::s_pCallbackInstance = nullptr;
 
-	void ClientNetworking::init()
+	NetworkUtils* ClientNetworking::init()
 	{
 		SteamDatagramErrMsg errMsg;
 		if (!GameNetworkingSockets_Init(nullptr, errMsg))
@@ -18,6 +19,7 @@ namespace Client {
 
 		g_logTimeZero = SteamNetworkingUtils()->GetLocalTimestamp();
 		SteamNetworkingUtils()->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Msg, DebugOutput);
+		return &networkUtils;
 	}
 
 	void ClientNetworking::DebugOutput(ESteamNetworkingSocketsDebugOutputType eType, const char* pszMsg)
@@ -129,33 +131,45 @@ namespace Client {
 
 		if (m_hConnection == k_HSteamNetConnection_Invalid) {
 			Logger::getInstance().LogError("Failed to create connection");
+			networkUtils.state = Failed;
 			return;
 		}
 		Logger::getInstance().LogInfo(std::format("m_hConnection: {}", uint32_t(m_hConnection)));
+
+		networkUtils.pImage = new uint8_t[DEFAULT_IMAGE_WIDTH * DEFAULT_IMAGE_HEIGHT * DEFAULT_PIXEL_SIZE];
+		if (networkUtils.pImage == nullptr)
+		{
+			Logger::getInstance().LogError("Failed to create pImage");
+		}
+		else {
+			Logger::getInstance().LogInfo("Allocated pImage");
+		}
+
 		PollConnectionStateChanges();
-		pIncomingMsg = new SteamNetworkingMessage_t * [10];// pMessage = SteamNetworkingUtils()->AllocateMessage(size);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		PollConnectionStateChanges();
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-	NetworkUtils ClientNetworking::run(size_t i) {
+	void ClientNetworking::run() {
 		if (networkUtils.state == Connected)
 			PollIncomingMessages();
 
 		PollConnectionStateChanges();
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
-		return networkUtils;
 	}
 
-	void ClientNetworking::PollIncomingMessages(size_t i) {
+	void ClientNetworking::PollIncomingMessages() {
 		while (!quit)
 		{
-			int numMsgs = m_pInterface->ReceiveMessagesOnConnection(m_hConnection, pIncomingMsg, 1);
+			ISteamNetworkingMessage* pIncomingMsg = nullptr;
+			int numMsgs = m_pInterface->ReceiveMessagesOnConnection(m_hConnection, &pIncomingMsg, 1);
 			if (numMsgs > 0) {
 				Logger::getInstance().LogInfo(std::format("Got  messages: {}", numMsgs));
-				memcpy(networkUtils.pImage[i], pIncomingMsg[0]->m_pData, pIncomingMsg[0]->m_cbSize);
-				pIncomingMsg[0]->Release();
+				if (networkUtils.pImage != nullptr)
+					memcpy(networkUtils.pImage, pIncomingMsg->m_pData, pIncomingMsg->m_cbSize);
+
+				pIncomingMsg->Release();
 			}
 			else if (numMsgs == 0) {
 				break;
@@ -175,6 +189,6 @@ namespace Client {
 	void ClientNetworking::closeConnection() {
 		Logger::getInstance().LogInfo("Disconnecting from server");
 		m_pInterface->CloseConnection(m_hConnection, 0, "Goodbye", true);
-		delete[] pIncomingMsg;
+		delete networkUtils.pImage;
 	}
 }

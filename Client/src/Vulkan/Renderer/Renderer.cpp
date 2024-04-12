@@ -36,7 +36,7 @@ namespace Client {
 		}
 	}
 
-	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t** pImage)
+	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t* pImage)
 	{
 		auto& device = deviceManager.getLogicalDevice();
 
@@ -58,9 +58,16 @@ namespace Client {
 
 		vkResetFences(device, 1, &displayInFlightFences[currentFrame]);
 
+		// TODO: dont use single time cmdbuffers!! It pretty slow!
+		if (pImage != nullptr && uiInput.connected) {
+			auto singleTimeCommandBuffer = commandPoolManager.beginSingleTimeCommands(deviceManager.getLogicalDevice());
+			resourceManager.copyToImage(pImage, DEFAULT_IMAGE_HEIGHT * DEFAULT_IMAGE_WIDTH * DEFAULT_PIXEL_SIZE, deviceManager, singleTimeCommandBuffer, imageIndex);
+			commandPoolManager.endSingleTimeCommands(deviceManager.getLogicalDevice(), singleTimeCommandBuffer, deviceManager.getGraphicsQueue());
+		}
+
 		auto& commandBuffer = commandPoolManager.getCommandBuffers()[currentFrame];
 		vkResetCommandBuffer(commandBuffer, 0);
-		recordCommandBuffer(commandBuffer, imageIndex, uiInput);
+		recordCommandBuffer(commandBuffer, imageIndex, uiInput, pImage);
 
 		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
 		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
@@ -95,14 +102,15 @@ namespace Client {
 		presentInfo.pImageIndices = &imageIndex;
 
 		result = vkQueuePresentKHR(deviceManager.getPresentQueue(), &presentInfo);
-		
+
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
 			Window::framebufferResized) {
 			Window::framebufferResized = false;
 			swapChainManager.recreateSwapChain();
 			// TODO: create recreateDescriptorSets function
 			//descriptorManager.recreateDescriptorSets();
-		} else if (result != VK_SUCCESS) {
+		}
+		else if (result != VK_SUCCESS) {
 			throw std::runtime_error("Failed to present swap chain image!");
 		}
 
@@ -110,7 +118,7 @@ namespace Client {
 	}
 
 	// TODO
-	void Renderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput)
+	void Renderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput, uint8_t* pImage)
 	{
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -165,7 +173,7 @@ namespace Client {
 			offsets);
 
 		vkCmdDraw(commandBuffer, 6, 1, 0, 0);
-		
+
 		UserInterface::draw(window, commandPoolManager.getCommandBuffers()[currentFrame], uiInput);
 
 		vkCmdEndRenderPass(commandBuffer);

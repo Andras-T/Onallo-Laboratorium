@@ -45,8 +45,8 @@ namespace Client {
 			descriptorManager, pipelineManager, commandPoolManager, resourceManager, renderPass);
 		renderer->createSyncObjects();
 		initImGui();
-
-		client.init();
+		client = new ClientNetworking();
+		networkUtils = client->init();
 	}
 
 	void Core::run() {
@@ -61,11 +61,11 @@ namespace Client {
 		NetworkAddress serverAddress;
 		serverAddress.address = uiInput.ip_address;
 		serverAddress.port = DEFAULT_SERVER_PORT;
-		networkUtils = client.connect(serverAddress);
+		client->connect(serverAddress);
 
-		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && networkUtils.state != Failed && !uiInput.disconnect)
+		while (!glfwWindowShouldClose(window.get_GLFW_Window()) && networkUtils->state != Failed && !uiInput.disconnect)
 		{
-			networkUtils = client.run();
+			client->run();
 			{
 				std::unique_lock<std::mutex> imageLock(m);
 				recieved = true;
@@ -75,21 +75,26 @@ namespace Client {
 			}
 		}
 
-		client.closeConnection();
+		client->closeConnection();
 
-		if (networkUtils.state == Failed)
+		if (networkUtils->state == Failed)
 			logger->LogError("Reciever loop stopped due to network issues!");
 
-		logger->LogInfo(std::format("Thread #{} is stopping! Current state: {}", std::this_thread::get_id(), int(networkUtils.state)));
+		logger->LogInfo(std::format("Thread #{} is stopping! Current state: {}", std::this_thread::get_id(), int(networkUtils->state)));
 	}
 
 	void Core::cleanUp()
 	{
 		check_vk_result(vkDeviceWaitIdle(deviceManager.getLogicalDevice()));
 
+		delete client;
+
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
+
+		renderer->cleanUp();
+		delete renderer;
 
 		swapChainManager.cleanUp();
 
@@ -98,9 +103,6 @@ namespace Client {
 		descriptorManager.cleanUp(deviceManager.getLogicalDevice());
 		resourceManager.cleanUp(deviceManager.getLogicalDevice());
 		commandPoolManager.cleanUp(deviceManager.getLogicalDevice());
-
-		renderer->cleanUp();
-		delete renderer;
 
 		deviceManager.cleanup();
 		window.cleanup();
@@ -119,44 +121,43 @@ namespace Client {
 		{
 			glfwPollEvents();
 
-			if (networkUtils.state == Connected) {
+			if (networkUtils->state == Connected) {
 				uiInput.connected = true;
 				uiInput.tryToConnect = false;
 				std::unique_lock<std::mutex> imageLock(m);
-				cv.wait(imageLock, [this] {return recieved || networkUtils.state == Failed || networkUtils.state == Idle || uiInput.disconnect; });
+				cv.wait(imageLock, [this] {return recieved || networkUtils->state == Failed || networkUtils->state == Idle || uiInput.disconnect; });
 				recieved = false;
 			}
 			else
 			{
-				networkUtils.pImage = nullptr;
 				uiInput.connected = false;
 
-				if (networkUtils.state == Failed)
+				if (networkUtils->state == Failed)
 				{
 					uiInput.tryToConnect = false;
 					if (reciever.joinable())
 						reciever.join();
-					networkUtils.state = Idle;
+					networkUtils->state = Idle;
 				}
 			}
 
 			if (uiInput.disconnect) {
 				if (reciever.joinable())
 					reciever.join();
-				networkUtils.state = Idle;
+				networkUtils->state = Idle;
 				uiInput.disconnect = false;
 				uiInput.connected = false;
 				uiInput.tryToConnect = false;
 			}
 
-			if (uiInput.tryToConnect && networkUtils.state != Connected && networkUtils.state != Connecting) {
-				networkUtils.state = Connecting;
+			if (uiInput.tryToConnect && networkUtils->state != Connected && networkUtils->state != Connecting) {
+				networkUtils->state = Connecting;
 				reciever = std::thread{ &Core::recieve, this };
 				logger->LogInfo(std::format("Given ip address: {}", uiInput.ip_address));
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 
-			renderer->drawFrame(lastFrameTime, uiInput, networkUtils.pImage);
+			renderer->drawFrame(lastFrameTime, uiInput, networkUtils->pImage);
 			double currentTime = glfwGetTime();
 			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
 			Window::lastTime = currentTime;
@@ -264,6 +265,7 @@ namespace Client {
 		dependency.dstAccessMask =
 			VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
 			VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 		VkRenderPassCreateInfo simulationRenderPassInfo{};
 		simulationRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;

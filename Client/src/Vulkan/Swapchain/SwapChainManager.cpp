@@ -178,7 +178,6 @@ namespace Client {
 		return swapChainSupportDetails;
 	}
 
-	// TODO: change format to the correct one!!!
 	VkSurfaceFormatKHR SwapChainManager::chooseSwapSurfaceFormat(
 		const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
@@ -190,7 +189,6 @@ namespace Client {
 		return availableFormats[0];
 	}
 
-	// TODO: change present mode to the correct one!!!
 	VkPresentModeKHR SwapChainManager::chooseSwapPresentMode(
 		const std::vector<VkPresentModeKHR>& availablePresentModes) {
 		for (const auto& availablePresentMode : availablePresentModes) {

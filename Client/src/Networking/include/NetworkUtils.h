@@ -13,7 +13,7 @@ namespace Client {
 	struct NetworkUtils
 	{
 		NetworkState state = Idle;
-		uint8_t** pImage = nullptr;
+		uint8_t* pImage;
 		bool recieved;
 	};
 

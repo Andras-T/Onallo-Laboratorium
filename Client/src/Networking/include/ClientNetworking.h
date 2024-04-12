@@ -34,7 +34,6 @@ namespace Client {
 	class ClientNetworking : public INetworking {
 		static bool quit;
 		NetworkUtils networkUtils;
-		ISteamNetworkingMessage** pIncomingMsg;
 		static ClientNetworking* s_pCallbackInstance;
 		ISteamNetworkingSockets* m_pInterface = nullptr;
 		HSteamNetConnection m_hConnection;
@@ -43,13 +42,13 @@ namespace Client {
 
 	public:
 
-		ClientNetworking(NetworkUtils& n) :networkUtils(n) {}
+		//ClientNetworking(NetworkUtils& n) :networkUtils(n) {}
 
-		void init() override;
+		NetworkUtils* init() override;
 		
 		void connect(const NetworkAddress& address) override;
 
-		void run(size_t i) override;
+		void run() override;
 
 		void closeConnection() override;
 
@@ -61,7 +60,7 @@ namespace Client {
 
 		void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo);
 
-		void PollIncomingMessages(size_t i);
+		void PollIncomingMessages();
 
 		void PollConnectionStateChanges();
 	};

@@ -9,5 +9,7 @@ layout(location = 0) out vec4 outColor;
 	
 void main() {
 	float x = texture(image, coord).x;
-	outColor = vec4(coord.x, coord.y, x, 0.0f);
+	float y = texture(image, coord).y;
+	float z = texture(image, coord).z;
+	outColor = vec4(x, y, z, 0.0f);
 }

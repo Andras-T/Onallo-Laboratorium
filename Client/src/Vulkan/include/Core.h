@@ -40,8 +40,8 @@ namespace Client {
 		Renderer* renderer;
 
 		Input uiInput;
-		NetworkUtils networkUtils;
-		ClientNetworking client;
+		NetworkUtils* networkUtils;
+		INetworking* client;
 
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debugMessenger;
@@ -60,8 +60,6 @@ namespace Client {
 		bool recieved = false;
 
 	public:
-
-		Core() :client(networkUtils) {}
 
 		void init();
 

@@ -9,7 +9,7 @@ namespace Client {
             quadBuffer, quadMemory,
             Quad::quadVertices.size() * sizeof(float));
         
-        uint32_t pixelSize = 4;
+        uint32_t pixelSize = DEFAULT_PIXEL_SIZE;
         VkDeviceSize size = pixelSize * static_cast<uint32_t>(DEFAULT_IMAGE_WIDTH) * static_cast<uint32_t>(DEFAULT_IMAGE_HEIGHT);
         createBuffer(deviceManager, size,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
