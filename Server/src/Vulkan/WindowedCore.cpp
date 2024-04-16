@@ -74,7 +74,7 @@ namespace Server {
 		while (!glfwWindowShouldClose(window.get_GLFW_Window()))
 		{
 			//std::this_thread::sleep_for(std::chrono::milliseconds(2));
-			networkMessage = server.run(resourceManager.getCPUpuImage(), resourceManager.getCPUImageSize());
+			networkMessage = server.run(resourceManager.getCompressedImage(), resourceManager.getCompressedImageSize());
 			{
 				std::unique_lock<std::mutex> imageLock(imageProcessing);
 				cv.wait(imageLock, [this] {return imageRendered; });

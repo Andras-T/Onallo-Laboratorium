@@ -1,6 +1,8 @@
 #pragma once
 
 #define GLFW_INCLUDE_VULKAN
+#include "cmp_core.h"
+#include "Compressonator.h"
 #include "GLFW/glfw3.h"
 #include "Images.h"
 #include <Vulkan/DeviceManager/include/DeviceManager.h>
@@ -18,7 +20,10 @@ namespace Server {
 		uint32_t width = DEFAULT_WIDTH;
 		uint32_t height = DEFAULT_HEIGHT;
 		VkDeviceSize size;
+		VkDeviceSize compressedSize;
 		void* mappedData;
+
+		CMP_BYTE* compressedImage;
 		uint8_t* cpuImage;
 
 		Images presentImages;
@@ -52,10 +57,17 @@ namespace Server {
 
 			vkFreeMemory(device, quadMemory, nullptr);
 			vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+			delete[] cpuImage;
+			delete[] compressedImage;
 		}
 
-		inline uint8_t* getCPUpuImage() {
+		inline uint8_t* getCPUImage() {
 			return cpuImage;
+		}
+
+		inline uint8_t* getCompressedImage() {
+			return compressedImage;
 		}
 
 		VkBuffer& getQuadBuffer() { return quadBuffer; }
@@ -68,7 +80,28 @@ namespace Server {
 
 		inline VkDeviceSize getCPUImageSize() { return size; }
 
+		inline VkDeviceSize getCompressedImageSize() { return compressedSize; }
+
 	private:
+
+		void compressImage(size_t row) {
+			// compressing the result using BC1 compression
+			//unsigned int stride = width * 4;
+			//auto blocksInRow = width / 4;
+			//auto blocksInColumn = height / 4;
+			//int index = 0;
+			//for (size_t row = 0; row < blocksInRow; row++)
+			//{
+			//	for (size_t column = 0; column < blocksInColumn; column++)
+			//	{
+			//		uint8_t* cmpImageLocation = &compressedImage[index * 8];
+			//		int cellIndex = 4 * (column * 4 + row * 4 * width);
+			//		uint8_t* imageLocation = &cpuImage[cellIndex];
+			//		//CompressBlockBC1(imageLocation, stride, cmpImageLocation);
+			//		index++;
+			//	}
+			//}
+		}
 
 		void createVertexBuffer(DeviceManager& deviceManager, VkCommandPool& commandPool, const void* src, VkBuffer& buffer, VkDeviceMemory& deviceMemory, VkDeviceSize bufferSize);
 

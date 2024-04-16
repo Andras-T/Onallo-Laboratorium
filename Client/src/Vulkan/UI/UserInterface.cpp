@@ -69,7 +69,7 @@ namespace Client {
 
 	void UserInterface::createFPSCounter()
 	{
-
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.75f);
 		ImGuiViewportP* viewport = (ImGuiViewportP*)(void*)ImGui::GetMainViewport();
 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar |
 			ImGuiWindowFlags_NoSavedSettings |
@@ -87,11 +87,13 @@ namespace Client {
 				ImGui::EndMenuBar();
 			}
 			ImGui::End();
+			ImGui::PopStyleVar();
 		}
 	}
 
 	void UserInterface::createMenuBar(Window& window)
 	{
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.75f);
 		ImGuiViewportP* viewport = (ImGuiViewportP*)(void*)ImGui::GetMainViewport();
 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar |
 			ImGuiWindowFlags_NoSavedSettings |
@@ -113,6 +115,7 @@ namespace Client {
 				ImGui::EndMenuBar();
 			}
 			ImGui::End();
+			ImGui::PopStyleVar();
 		}
 	}
 	void UserInterface::menuShortcuts(Window& window)

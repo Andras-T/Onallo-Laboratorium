@@ -156,7 +156,7 @@ namespace Client {
 			PollIncomingMessages();
 
 		PollConnectionStateChanges();
-		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		std::this_thread::sleep_for(std::chrono::milliseconds(13));
 	}
 
 	void ClientNetworking::PollIncomingMessages() {
@@ -166,8 +166,10 @@ namespace Client {
 			int numMsgs = m_pInterface->ReceiveMessagesOnConnection(m_hConnection, &pIncomingMsg, 1);
 			if (numMsgs > 0) {
 				Logger::getInstance().LogInfo(std::format("Got  messages: {}", numMsgs));
-				if (networkUtils.pImage != nullptr)
+				if (networkUtils.pImage != nullptr) {
 					memcpy(networkUtils.pImage, pIncomingMsg->m_pData, pIncomingMsg->m_cbSize);
+					networkUtils.imageSize = pIncomingMsg->m_cbSize;
+				}
 
 				pIncomingMsg->Release();
 			}

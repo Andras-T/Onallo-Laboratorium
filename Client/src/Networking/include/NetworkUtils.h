@@ -14,6 +14,7 @@ namespace Client {
 	{
 		NetworkState state = Idle;
 		uint8_t* pImage;
+		uint64_t imageSize;
 		bool recieved;
 	};
 

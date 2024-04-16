@@ -1,5 +1,6 @@
 #include "include/ResourceManager.h"
 #include "include/Quad.h"
+#include <thread>
 
 namespace Server {
 
@@ -11,29 +12,6 @@ namespace Server {
 
 		if (window.has_value())
 		{
-
-			int width, height;
-			glfwGetFramebufferSize(window.value(), &width, &height);
-			auto temp = static_cast<uint32_t>(width) * static_cast<uint32_t>(height);
-			size = temp * pixelSize;
-		}
-		else {
-			size = DEFAULT_WIDTH * DEFAULT_HEIGHT * pixelSize;
-		}
-
-		createBuffer(deviceManager, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-			stagingBuffer, stagingBufferMemory);
-		cpuImage = new uint8_t[size];
-	}
-
-	void ResourceManager::recreateStagingBuffer(DeviceManager& deviceManager, std::optional<GLFWwindow*> window)
-	{
-		vkDestroyBuffer(deviceManager.getLogicalDevice(), stagingBuffer, nullptr);
-		vkFreeMemory(deviceManager.getLogicalDevice(), stagingBufferMemory, nullptr);
-
-		if (window.has_value())
-		{
-
 			int width, height;
 			glfwGetFramebufferSize(window.value(), &width, &height);
 			this->width = static_cast<uint32_t>(width);
@@ -46,8 +24,61 @@ namespace Server {
 
 		createBuffer(deviceManager, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
 			stagingBuffer, stagingBufferMemory);
-		delete[] cpuImage;
+
 		cpuImage = new uint8_t[size];
+
+		CMP_Texture destTexture = { 0 };
+		destTexture.dwSize = sizeof(destTexture);
+		destTexture.dwWidth = width;
+		destTexture.dwHeight = height;
+		destTexture.dwPitch = width;
+		destTexture.format = CMP_FORMAT_BC1;
+		destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
+
+		compressedSize = destTexture.dwDataSize;
+		compressedImage = (CMP_BYTE*)malloc(compressedSize);
+	}
+
+	void ResourceManager::recreateStagingBuffer(DeviceManager& deviceManager, std::optional<GLFWwindow*> window)
+	{
+		vkDestroyBuffer(deviceManager.getLogicalDevice(), stagingBuffer, nullptr);
+		vkFreeMemory(deviceManager.getLogicalDevice(), stagingBufferMemory, nullptr);
+
+		if (window.has_value())
+		{
+			int width, height;
+			glfwGetFramebufferSize(window.value(), &width, &height);
+			this->width = static_cast<uint32_t>(width);
+			this->height = static_cast<uint32_t>(height);
+			size = width * height * pixelSize;
+		}
+		else {
+			size = DEFAULT_WIDTH * DEFAULT_HEIGHT * pixelSize;
+		}
+
+		createBuffer(deviceManager, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+			stagingBuffer, stagingBufferMemory);
+
+		delete[] cpuImage;
+		delete[] compressedImage;
+
+		CMP_Texture destTexture = { 0 };
+		destTexture.dwSize = sizeof(destTexture);
+		destTexture.dwWidth = width;
+		destTexture.dwHeight = height;
+		destTexture.dwPitch = width;
+		destTexture.format = CMP_FORMAT_BC1;
+		destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
+
+		cpuImage = new uint8_t[size];
+		compressedSize = destTexture.dwDataSize;
+		compressedImage = (CMP_BYTE*)malloc(compressedSize);
+	}
+
+	bool CompressionCallback(float fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2)
+	{
+		//std::printf("\rCompression progress = %3.0f  ", fProgress);
+		return false;
 	}
 
 	void ResourceManager::copyImageToStagingBuffer(VkImage& image, DeviceManager& deviceManager, VkCommandBuffer& commandBuffer) {
@@ -114,19 +145,57 @@ namespace Server {
 			1, &barrier2
 		);
 
-		//commandPoolManager.endSingleTimeCommands(deviceManager.getLogicalDevice(), commandBuffer, deviceManager.getGraphicsQueue());
-
 		vkMapMemory(deviceManager.getLogicalDevice(), stagingBufferMemory, 0, size, 0, &mappedData);
 
 		memcpy(cpuImage, mappedData, (size_t)size);
-
-		// for testing the "cpu" image
-		//int sum = 0;
-		//for (size_t i = 0; i < size; i++) {
-		//	sum += cpuImage[i] != 0 ? 1 : 0;
+		
+		int maxthreads = std::thread::hardware_concurrency();
+		
+		// compressing the result using BC1 compression
+		//unsigned int stride = width * 4;
+		//auto blocksInRow = width / 4;
+		//auto blocksInColumn = height / 4;
+		//int index = 0;
+		//for (size_t row = 0; row < blocksInRow; row++)
+		//{
+		//	for (size_t column = 0; column < blocksInColumn; column++)
+		//	{
+		//		uint8_t* cmpImageLocation = &compressedImage[index * 8];
+		//		int cellIndex = 4 * (column * 4 + row * 4 * width);
+		//		uint8_t* imageLocation = &cpuImage[cellIndex];
+		//		CompressBlockBC1(imageLocation, stride, cmpImageLocation);
+		//		index++;
+		//	}
 		//}
-		//
-		//std::cout << "\n\n" << sum << "\n\n";
+
+		CMP_Texture srcTexture = { 0 };
+		srcTexture.dwSize = sizeof(srcTexture);
+		srcTexture.dwDataSize = size;
+		srcTexture.dwWidth = width;
+		srcTexture.dwHeight = height;
+		srcTexture.dwPitch = width * 4;
+		srcTexture.format = CMP_FORMAT_RGBA_8888;
+		srcTexture.pData = cpuImage;
+
+		CMP_Texture destTexture = { 0 };
+		destTexture.dwSize = sizeof(destTexture);
+		destTexture.dwWidth = srcTexture.dwWidth;
+		destTexture.dwHeight = srcTexture.dwHeight;
+		destTexture.dwPitch = srcTexture.dwWidth;
+		destTexture.format = CMP_FORMAT_BC1;
+		destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
+		destTexture.pData = compressedImage;
+
+		CMP_CompressOptions options = { 0 };
+		options.dwSize = sizeof(options);
+		options.fquality = 1.0; // range: 0..1
+		options.dwnumThreads = 16;  // Uses auto, else set number of threads from 1..127 max
+
+		CMP_ERROR cmp_status = CMP_ConvertTexture(&srcTexture, &destTexture, &options, &CompressionCallback);
+		if (cmp_status != CMP_OK)
+		{
+			std::printf("Compression returned an error %d\n", cmp_status);
+		}
 
 		vkUnmapMemory(deviceManager.getLogicalDevice(), stagingBufferMemory);
 	}

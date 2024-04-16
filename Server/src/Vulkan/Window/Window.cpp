@@ -14,7 +14,7 @@ namespace Server {
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		glfwWindowHint(GLFW_MAXIMIZED, GLFW_FALSE);
-		glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+		glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 		GLFWmonitor* monitor = glfwGetPrimaryMonitor();

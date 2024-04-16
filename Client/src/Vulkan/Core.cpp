@@ -157,7 +157,7 @@ namespace Client {
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 
-			renderer->drawFrame(lastFrameTime, uiInput, networkUtils->pImage);
+			renderer->drawFrame(lastFrameTime, uiInput, networkUtils->pImage, networkUtils->imageSize);
 			double currentTime = glfwGetTime();
 			lastFrameTime = (currentTime - Window::lastTime) * 1000.0;
 			Window::lastTime = currentTime;

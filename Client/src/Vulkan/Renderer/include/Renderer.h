@@ -48,9 +48,9 @@ namespace Client {
 
 		void createSyncObjects();
 
-		void drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t* pImage);
+		void drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t* compressedImage, uint32_t imageSize);
 
-		void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput, uint8_t* pImage);
+		void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput, uint8_t* compressedImage);
 	
 		void cleanUp();
 	};

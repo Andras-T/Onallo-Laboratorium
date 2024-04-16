@@ -42,7 +42,7 @@ namespace Server {
 
 		std::array<SteamNetworkingConfigValue_t, 2> opts;
 		opts[0].SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)SteamNetConnectionStatusChangedCallback);
-		opts[1].SetInt32(k_ESteamNetworkingConfig_SendBufferSize, 524288 * 100);
+		opts[1].SetInt32(k_ESteamNetworkingConfig_SendBufferSize, 524288 * 1000);
 		m_hListenSock = m_pInterface->CreateListenSocketIP(serverLocalAddr, 2, opts.data());
 
 		if (m_hListenSock == k_HSteamListenSocket_Invalid)
@@ -54,7 +54,7 @@ namespace Server {
 	}
 
 	NetworkMessage ServerNetworking::run(uint8_t* imgage, uint32 size) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(13));
 
 		//PollIncomingMessages();
 		PollConnectionStateChanges();
@@ -247,7 +247,7 @@ namespace Server {
 	{
 		SteamNetConnectionRealTimeStatus_t pStatus;
 		m_pInterface->GetConnectionRealTimeStatus(connection, &pStatus, 0, nullptr);
-		Logger::getInstance().LogInfo(std::format("SentUnacked: {} m_cbPendingUnreliable, ping: {} ms, quality: {}, pending: rel {} bytes, unrel {} bytes, queuetime: {} bytes",
-			pStatus.m_cbSentUnackedReliable, pStatus.m_nPing, pStatus.m_flConnectionQualityRemote, pStatus.m_cbPendingReliable, pStatus.m_cbPendingUnreliable, pStatus.m_usecQueueTime));
+		Logger::getInstance().LogInfo(std::format("SentUnacked: {} m_cbPendingUnreliable, pending: rel {} bytes, unrel {} bytes, queuetime: {} bytes",
+			pStatus.m_cbSentUnackedReliable, pStatus.m_cbPendingReliable, pStatus.m_cbPendingUnreliable, pStatus.m_usecQueueTime));
 	}
 }

@@ -36,7 +36,7 @@ namespace Client {
 		}
 	}
 
-	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t* pImage)
+	void Renderer::drawFrame(uint32_t lastFrameTime, Input& uiInput, uint8_t* compressedImage, uint32_t imageSize)
 	{
 		auto& device = deviceManager.getLogicalDevice();
 
@@ -58,16 +58,9 @@ namespace Client {
 
 		vkResetFences(device, 1, &displayInFlightFences[currentFrame]);
 
-		// TODO: dont use single time cmdbuffers!! It pretty slow!
-		if (pImage != nullptr && uiInput.connected) {
-			auto singleTimeCommandBuffer = commandPoolManager.beginSingleTimeCommands(deviceManager.getLogicalDevice());
-			resourceManager.copyToImage(pImage, DEFAULT_IMAGE_HEIGHT * DEFAULT_IMAGE_WIDTH * DEFAULT_PIXEL_SIZE, deviceManager, singleTimeCommandBuffer, imageIndex);
-			commandPoolManager.endSingleTimeCommands(deviceManager.getLogicalDevice(), singleTimeCommandBuffer, deviceManager.getGraphicsQueue());
-		}
-
 		auto& commandBuffer = commandPoolManager.getCommandBuffers()[currentFrame];
 		vkResetCommandBuffer(commandBuffer, 0);
-		recordCommandBuffer(commandBuffer, imageIndex, uiInput, pImage);
+		recordCommandBuffer(commandBuffer, imageIndex, uiInput, compressedImage);
 
 		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
 		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
@@ -117,14 +110,17 @@ namespace Client {
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
-	// TODO
-	void Renderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput, uint8_t* pImage)
+	void Renderer::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex, Input& uiInput, uint8_t* compressedImage)
 	{
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
 		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
 			throw std::runtime_error("failed to begin recording blur command buffer!");
+		}
+
+		if (compressedImage != nullptr && uiInput.connected) {
+			resourceManager.copyToImage(compressedImage, DEFAULT_IMAGE_HEIGHT * DEFAULT_IMAGE_WIDTH * DEFAULT_PIXEL_SIZE, deviceManager, commandBuffer, imageIndex);
 		}
 
 		VkRenderPassBeginInfo renderPassInfo{};

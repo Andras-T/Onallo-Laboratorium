@@ -42,9 +42,7 @@ set(SOURCES
         ${LOGGER_DIR}/Logger.h
         ${LOGGER_DIR}/Logger.cpp)
 
-add_executable(Server ${SOURCES} ../res/app.o)
+add_executable(Server ${SOURCES} ../res/app.o "$ENV{COMPRESSONATOR_ROOT}/lib/bin/x64/CMP_Core_MDd_DLL.dll" "$ENV{COMPRESSONATOR_ROOT}/lib/bin/x64/Compressonator_MDd_DLL.dll")
 FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Server/shaders")
-
-include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends ${STB_DIR} ${LOGGER_DIR} src)
-target_link_libraries(Server glfw glm Vulkan::Vulkan GameNetworkingSockets::GameNetworkingSockets)
-#  GameNetworkingSockets::static GameNetworkingSockets::shared GameNetworkingSockets::GameNetworkingSockets_s
+include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends ${STB_DIR} ${LOGGER_DIR} src "$ENV{COMPRESSONATOR_ROOT}/include")
+target_link_libraries(Server glfw glm Vulkan::Vulkan GameNetworkingSockets::GameNetworkingSockets "$ENV{COMPRESSONATOR_ROOT}/lib/bin/x64/CMP_Core_MDd.lib" "$ENV{COMPRESSONATOR_ROOT}/lib/bin/x64/Compressonator_MDd.lib")
